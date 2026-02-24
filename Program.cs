@@ -6,18 +6,20 @@ using Tool = ModelContextProtocol.Protocol.Tool;
 
 // MCP-сервер «Заметки агента»: запись и чтение в workspace/.cascade-ide/agent-notes.md.
 // Подключается в Cursor без Cascade IDE — агент сохраняет и восстанавливает контекст между сессиями и до суммаризации.
+// Если задана переменная окружения AGENT_NOTES_FILE (полный путь к файлу) — используется она; один файл заметок во всех окнах/репо.
 
 static JsonElement Schema(object schema) => JsonSerializer.SerializeToElement(schema);
 
 const string NotesDirName = ".cascade-ide";
 const string NotesFileName = "agent-notes.md";
+const string EnvNotesFile = "AGENT_NOTES_FILE";
 
 var toolsList = new List<Tool>
 {
     new()
     {
         Name = "write_agent_notes",
-        Description = "Записать заметки агента (полная замена файла). Агент сам решает, когда, что и в каком формате сохранять. Хранятся в workspace_path/.cascade-ide/agent-notes.md. ВНИМАНИЕ: перезаписывает файл целиком; для добавления блока без риска стереть остальное используйте append_agent_notes.",
+        Description = "Записать заметки агента (полная замена файла). Агент сам решает, когда, что и в каком формате сохранять. Путь: если задана переменная окружения AGENT_NOTES_FILE — используется она (один файл во всех workspace); иначе workspace_path/.cascade-ide/agent-notes.md. ВНИМАНИЕ: перезаписывает файл целиком; для добавления блока без риска стереть остальное используйте append_agent_notes.",
         InputSchema = Schema(new
         {
             type = "object",
@@ -32,7 +34,7 @@ var toolsList = new List<Tool>
     new()
     {
         Name = "append_agent_notes",
-        Description = "Добавить блок в конец заметок агента без перезаписи файла. Безопасно: не трогает существующее содержимое. Файл: workspace_path/.cascade-ide/agent-notes.md. Рекомендуется для добавления своего блока (Claude, Composer, другой агент), чтобы не стереть заметки других.",
+        Description = "Добавить блок в конец заметок агента без перезаписи файла. Безопасно: не трогает существующее содержимое. Путь: AGENT_NOTES_FILE (если задана) иначе workspace_path/.cascade-ide/agent-notes.md. Рекомендуется для добавления своего блока (Claude, Composer, другой агент), чтобы не стереть заметки других.",
         InputSchema = Schema(new
         {
             type = "object",
@@ -47,7 +49,7 @@ var toolsList = new List<Tool>
     new()
     {
         Name = "read_agent_notes",
-        Description = "Прочитать заметки агента из workspace_path/.cascade-ide/agent-notes.md. Возвращает содержимое или пустую строку. Агент восстанавливает контекст в новом чате.",
+        Description = "Прочитать заметки агента. Путь: AGENT_NOTES_FILE (если задана) иначе workspace_path/.cascade-ide/agent-notes.md. Возвращает содержимое или пустую строку. Агент восстанавливает контекст в новом чате.",
         InputSchema = Schema(new
         {
             type = "object",
@@ -62,6 +64,9 @@ var toolsList = new List<Tool>
 
 static string GetNotesPath(string workspacePath)
 {
+    var globalPath = Environment.GetEnvironmentVariable(EnvNotesFile);
+    if (!string.IsNullOrWhiteSpace(globalPath))
+        return Path.GetFullPath(globalPath.Trim());
     var root = Path.GetFullPath(workspacePath.Trim());
     if (File.Exists(root))
         root = Path.GetDirectoryName(root) ?? root;
