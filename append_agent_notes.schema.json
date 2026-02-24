@@ -1,0 +1,18 @@
+{
+  "name": "append_agent_notes",
+  "description": "Добавить блок в конец заметок агента без перезаписи файла. Безопасно: не трогает существующее содержимое. Файл: workspace_path/.cascade-ide/agent-notes.md. Рекомендуется для добавления своего блока (Claude, Composer, другой агент), чтобы не стереть заметки других.",
+  "arguments": {
+    "type": "object",
+    "properties": {
+      "workspace_path": {
+        "type": "string",
+        "description": "Каталог workspace (тот же, что при read/write)."
+      },
+      "content": {
+        "type": "string",
+        "description": "Текст блока для добавления в конец файла (перед ним добавляется перевод строки, если нужно)."
+      }
+    },
+    "required": ["workspace_path", "content"]
+  }
+}

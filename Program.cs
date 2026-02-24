@@ -17,14 +17,29 @@ var toolsList = new List<Tool>
     new()
     {
         Name = "write_agent_notes",
-        Description = "Записать заметки агента. Агент сам решает, когда, что и в каком формате сохранять (markdown, json, текст). Хранятся в workspace_path/.cascade-ide/agent-notes.md. Для непрерывности между сессиями и до суммаризации.",
+        Description = "Записать заметки агента (полная замена файла). Агент сам решает, когда, что и в каком формате сохранять. Хранятся в workspace_path/.cascade-ide/agent-notes.md. ВНИМАНИЕ: перезаписывает файл целиком; для добавления блока без риска стереть остальное используйте append_agent_notes.",
         InputSchema = Schema(new
         {
             type = "object",
             properties = new
             {
                 workspace_path = new { type = "string", description = "Каталог workspace (например корень проекта в Cursor). Здесь создаётся .cascade-ide/agent-notes.md." },
-                content = new { type = "string", description = "Полное содержимое заметок (перезаписывает файл)." }
+                content = new { type = "string", description = "Полное содержимое заметок (перезаписывает файл целиком)." }
+            },
+            required = new[] { "workspace_path", "content" }
+        })
+    },
+    new()
+    {
+        Name = "append_agent_notes",
+        Description = "Добавить блок в конец заметок агента без перезаписи файла. Безопасно: не трогает существующее содержимое. Файл: workspace_path/.cascade-ide/agent-notes.md. Рекомендуется для добавления своего блока (Claude, Composer, другой агент), чтобы не стереть заметки других.",
+        InputSchema = Schema(new
+        {
+            type = "object",
+            properties = new
+            {
+                workspace_path = new { type = "string", description = "Каталог workspace (тот же, что при read/write)." },
+                content = new { type = "string", description = "Текст блока для добавления в конец файла (перед ним добавляется перевод строки, если нужно)." }
             },
             required = new[] { "workspace_path", "content" }
         })
@@ -69,6 +84,24 @@ static string HandleWrite(IReadOnlyDictionary<string, JsonElement> args)
     return "OK";
 }
 
+static string HandleAppend(IReadOnlyDictionary<string, JsonElement> args)
+{
+    if (!args.TryGetValue("workspace_path", out var wp) || wp.GetString() is not { } workspacePath || string.IsNullOrWhiteSpace(workspacePath))
+        throw new ArgumentException("workspace_path is required.");
+    if (!args.TryGetValue("content", out var c))
+        throw new ArgumentException("content is required.");
+    var contentToAppend = c.GetString() ?? "";
+    var filePath = GetNotesPath(workspacePath);
+    var dir = Path.GetDirectoryName(filePath);
+    if (string.IsNullOrEmpty(dir))
+        throw new ArgumentException("Invalid workspace_path.");
+    Directory.CreateDirectory(dir);
+    var existing = File.Exists(filePath) ? File.ReadAllText(filePath, System.Text.Encoding.UTF8) : "";
+    var separator = existing.Length > 0 && !existing.EndsWith('\n') ? "\n" : "";
+    File.WriteAllText(filePath, existing + separator + contentToAppend, System.Text.Encoding.UTF8);
+    return "OK";
+}
+
 static string HandleRead(IReadOnlyDictionary<string, JsonElement> args)
 {
     if (!args.TryGetValue("workspace_path", out var wp) || wp.GetString() is not { } workspacePath || string.IsNullOrWhiteSpace(workspacePath))
@@ -99,10 +132,11 @@ var options = new McpServerOptions
                 var text = name switch
                 {
                     "write_agent_notes" => HandleWrite(args),
+                    "append_agent_notes" => HandleAppend(args),
                     "read_agent_notes" => HandleRead(args),
                     _ => throw new ArgumentException($"Unknown tool: {name}.")
                 };
-                var isError = name == "write_agent_notes" && text != "OK";
+                var isError = (name == "write_agent_notes" || name == "append_agent_notes") && text != "OK";
                 return ValueTask.FromResult(new CallToolResult
                 {
                     Content = [new TextContentBlock { Text = text }],
