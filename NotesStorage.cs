@@ -163,7 +163,7 @@ internal sealed class NotesStorage
             return "";
 
         var sections = ParseSections(notes);
-        var resolvedScope = ResolveScope(activeScope, sections);
+        var resolvedScope = ResolveScope(activeScope, sections, workspacePath);
 
         var priorityIds = new[]
         {
@@ -390,10 +390,14 @@ internal sealed class NotesStorage
         return sections;
     }
 
-    private static string ResolveScope(string? requestedScope, IReadOnlyDictionary<string, string> sections)
+    private static string ResolveScope(string? requestedScope, IReadOnlyDictionary<string, string> sections, string workspacePath)
     {
         if (!string.IsNullOrWhiteSpace(requestedScope))
             return requestedScope.Trim().ToLowerInvariant();
+
+        var mappedScope = TryResolveScopeFromWorkspaceMap(workspacePath, sections);
+        if (!string.IsNullOrWhiteSpace(mappedScope))
+            return mappedScope;
 
         if (!sections.TryGetValue("active-scope", out var activeScopeContent))
             return "current-projects";
@@ -403,6 +407,59 @@ internal sealed class NotesStorage
             ? match.Groups["scope"].Value.Trim().ToLowerInvariant()
             : "current-projects";
     }
+
+    private static string? TryResolveScopeFromWorkspaceMap(string workspacePath, IReadOnlyDictionary<string, string> sections)
+    {
+        var mapContent =
+            sections.TryGetValue("workspace-scope-map-v1", out var primaryMap) ? primaryMap :
+            sections.TryGetValue("scope-map-v1", out var legacyMap) ? legacyMap :
+            null;
+
+        if (string.IsNullOrWhiteSpace(mapContent))
+            return null;
+
+        var normalizedWorkspace = NormalizePathKey(workspacePath);
+        var lines = mapContent.Replace("\r\n", "\n").Split('\n');
+        foreach (var line in lines)
+        {
+            var parsed = ParseScopeMapLine(line);
+            if (parsed is null)
+                continue;
+
+            var (workspaceKey, scope) = parsed.Value;
+            if (string.Equals(normalizedWorkspace, NormalizePathKey(workspaceKey), StringComparison.OrdinalIgnoreCase))
+                return scope;
+        }
+
+        return null;
+    }
+
+    private static (string workspaceKey, string scope)? ParseScopeMapLine(string rawLine)
+    {
+        var line = rawLine.Trim();
+        if (line.Length == 0 || line.StartsWith('#'))
+            return null;
+
+        if (line.StartsWith('-'))
+            line = line[1..].Trim();
+
+        var arrowParts = line.Split("=>", StringSplitOptions.TrimEntries);
+        if (arrowParts.Length == 2)
+            return (arrowParts[0], arrowParts[1].ToLowerInvariant());
+
+        var colonParts = line.Split(':', 2, StringSplitOptions.TrimEntries);
+        if (colonParts.Length == 2)
+            return (colonParts[0], colonParts[1].ToLowerInvariant());
+
+        var eqParts = line.Split('=', 2, StringSplitOptions.TrimEntries);
+        if (eqParts.Length == 2)
+            return (eqParts[0], eqParts[1].ToLowerInvariant());
+
+        return null;
+    }
+
+    private static string NormalizePathKey(string path) =>
+        path.Trim().Replace('/', '\\').TrimEnd('\\');
 
     private static string CompactNotes(string notes)
     {
@@ -415,6 +472,7 @@ internal sealed class NotesStorage
             "core-software-context",
             "language-style-ru",
             "personal-workstyle-v1",
+            "workspace-scope-map-v1",
             "active-scope",
             "current-task",
             "scope-current-projects",
