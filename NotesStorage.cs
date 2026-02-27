@@ -420,6 +420,8 @@ internal sealed class NotesStorage
 
         var normalizedWorkspace = NormalizePathKey(workspacePath);
         var lines = mapContent.Replace("\r\n", "\n").Split('\n');
+        string? bestScope = null;
+        var bestKeyLength = -1;
         foreach (var line in lines)
         {
             var parsed = ParseScopeMapLine(line);
@@ -427,11 +429,18 @@ internal sealed class NotesStorage
                 continue;
 
             var (workspaceKey, scope) = parsed.Value;
-            if (string.Equals(normalizedWorkspace, NormalizePathKey(workspaceKey), StringComparison.OrdinalIgnoreCase))
-                return scope;
+            var normalizedKey = NormalizePathKey(workspaceKey);
+            if (!IsPrefixPathMatch(normalizedWorkspace, normalizedKey))
+                continue;
+
+            if (normalizedKey.Length <= bestKeyLength)
+                continue;
+
+            bestKeyLength = normalizedKey.Length;
+            bestScope = scope;
         }
 
-        return null;
+        return bestScope;
     }
 
     private static (string workspaceKey, string scope)? ParseScopeMapLine(string rawLine)
@@ -460,6 +469,17 @@ internal sealed class NotesStorage
 
     private static string NormalizePathKey(string path) =>
         path.Trim().Replace('/', '\\').TrimEnd('\\');
+
+    private static bool IsPrefixPathMatch(string workspacePath, string mapKeyPath)
+    {
+        if (string.Equals(workspacePath, mapKeyPath, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (!workspacePath.StartsWith(mapKeyPath, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return workspacePath.Length > mapKeyPath.Length && workspacePath[mapKeyPath.Length] == '\\';
+    }
 
     private static string CompactNotes(string notes)
     {
