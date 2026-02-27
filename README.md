@@ -10,6 +10,12 @@ MLP-v1 в этом репозитории:
 - поиск по заметкам;
 - rollback к ревизии.
 
+Новые возможности v0.3.0:
+
+- тонкая загрузка hot-context (`read_hot_context`);
+- целевое извлечение из архивных ревизий (`extract_from_archive`);
+- полуавтоматическое ужатие hot-context (`compact_hot_context`).
+
 ## Стек
 
 - C#, .NET 10, win-x64, self-contained (как dotnet-debug-mcp и roslyn-mcp).
@@ -27,10 +33,13 @@ dotnet publish -c Release -o publish
 | Имя | Описание | Аргументы |
 | ----- | ---------- | ---------- |
 | `read_agent_notes` | Прочитать заметки. | `workspace_path` |
+| `read_hot_context` | Прочитать только горячий контекст L0/L1 (без архивного хвоста). | `workspace_path`, `active_scope?` |
 | `write_agent_notes` | Записать заметки (**полная замена** файла). Перед заменой текущая версия сохраняется в ревизии. | `workspace_path`, `content` |
 | `append_agent_notes` | Добавить блок в конец без полной перезаписи. Перед изменением создаётся ревизия. | `workspace_path`, `content` |
 | `upsert_agent_notes_section` | Вставить/обновить секцию по `section_id` (через маркеры HTML-комментариев). | `workspace_path`, `section_id`, `content` |
 | `search_agent_notes` | Поиск по заметкам (case-insensitive), возвращает строки и номера строк. | `workspace_path`, `query`, `head_limit?` |
+| `extract_from_archive` | Поиск по конкретной/последней ревизии с контекстом строк. | `workspace_path`, `query`, `revision_file?`, `head_limit?`, `context_lines?` |
+| `compact_hot_context` | Удалить дубли секций и нормализовать структуру hot-context (preview/apply). | `workspace_path`, `apply?` |
 | `list_agent_notes_revisions` | Список доступных ревизий для отката. | `workspace_path`, `limit?` |
 | `rollback_agent_notes` | Откатить заметки к выбранной (или последней) ревизии. | `workspace_path`, `revision_file?` |
 

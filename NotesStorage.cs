@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 internal sealed class NotesStorage
 {
@@ -10,6 +11,9 @@ internal sealed class NotesStorage
     private const string RevisionsDirName = ".revisions";
 
     private readonly object _sync = new();
+    private static readonly Regex SectionRegex = new(
+        @"<!--\s*section:(?<id>[A-Za-z0-9._-]+)\s*-->\s*(?<content>.*?)\s*<!--\s*/section:\k<id>\s*-->",
+        RegexOptions.Singleline | RegexOptions.Compiled);
 
     internal string GetNotesPath(string workspacePath)
     {
@@ -152,6 +156,142 @@ internal sealed class NotesStorage
         return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
     }
 
+    internal string ReadHotContext(string workspacePath, string? activeScope)
+    {
+        var notes = Read(workspacePath);
+        if (string.IsNullOrWhiteSpace(notes))
+            return "";
+
+        var sections = ParseSections(notes);
+        var resolvedScope = ResolveScope(activeScope, sections);
+
+        var priorityIds = new[]
+        {
+            "active-scope",
+            "current-task",
+            "core-software-context",
+            "language-style-ru",
+            "execution-gate-v1",
+            "response-finalizer-v1",
+            "hot-context-writing-contract",
+            "ontology-router-v1"
+        }.ToList();
+
+        var scopeId = resolvedScope switch
+        {
+            "portal" => "scope-portal",
+            "mixed" => "scope-mixed",
+            _ => "scope-current-projects"
+        };
+        priorityIds.Add(scopeId);
+
+        var loaded = new List<string>();
+        var blocks = new List<string>();
+        foreach (var id in priorityIds.Distinct(StringComparer.Ordinal))
+        {
+            if (!sections.TryGetValue(id, out var content))
+                continue;
+
+            loaded.Add(id);
+            blocks.Add($"<!-- section:{id} -->\n{content}\n<!-- /section:{id} -->");
+        }
+
+        var payload = new
+        {
+            active_scope = resolvedScope,
+            loaded_sections = loaded,
+            content = JoinBlocks(blocks.ToArray()).TrimEnd('\n')
+        };
+
+        return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    internal string ExtractFromArchive(string workspacePath, string query, string? revisionFile, int limit, int contextLines)
+    {
+        var notesPath = GetNotesPath(workspacePath);
+        var revisionsDir = GetRevisionsDir(notesPath);
+        if (!Directory.Exists(revisionsDir))
+            throw new ArgumentException("No revisions found.");
+
+        var resolvedRevisionFile = revisionFile
+            ?? Directory.GetFiles(revisionsDir, "*.md")
+                .Select(Path.GetFileName)
+                .OrderByDescending(name => name)
+                .FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(resolvedRevisionFile))
+            throw new ArgumentException("No revisions found.");
+
+        var revisionPath = Path.Combine(revisionsDir, resolvedRevisionFile);
+        if (!File.Exists(revisionPath))
+            throw new ArgumentException("revision_file not found.");
+
+        var text = File.ReadAllText(revisionPath, Encoding.UTF8);
+        var lines = text.Replace("\r\n", "\n").Split('\n');
+
+        var totalMatches = 0;
+        var matches = new List<object>();
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (!lines[i].Contains(query, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            totalMatches++;
+            if (matches.Count >= limit)
+                continue;
+
+            var start = Math.Max(0, i - contextLines);
+            var end = Math.Min(lines.Length - 1, i + contextLines);
+            var window = new List<object>();
+            for (var j = start; j <= end; j++)
+            {
+                window.Add(new
+                {
+                    line = j + 1,
+                    text = lines[j]
+                });
+            }
+
+            matches.Add(new
+            {
+                line = i + 1,
+                text = lines[i],
+                context = window
+            });
+        }
+
+        var payload = new
+        {
+            revision_file = resolvedRevisionFile,
+            query,
+            total_matches = totalMatches,
+            returned_matches = matches.Count,
+            matches
+        };
+
+        return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    internal string CompactHotContext(string workspacePath, bool apply)
+    {
+        var notesPath = GetNotesPath(workspacePath);
+        var existing = File.Exists(notesPath) ? File.ReadAllText(notesPath, Encoding.UTF8) : "";
+        var compacted = CompactNotes(existing);
+
+        if (!apply)
+        {
+            var payload = new
+            {
+                changed = !string.Equals(existing, compacted, StringComparison.Ordinal),
+                content = compacted.TrimEnd('\n')
+            };
+
+            return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+        }
+
+        return SaveWithRevision(notesPath, compacted, "compact-hot-context");
+    }
+
     private string SaveWithRevision(string notesPath, string newContent, string reason)
     {
         lock (_sync)
@@ -234,5 +374,82 @@ internal sealed class NotesStorage
             return "";
 
         return string.Join("\n\n", nonEmpty) + "\n";
+    }
+
+    private static Dictionary<string, string> ParseSections(string notes)
+    {
+        var sections = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (Match match in SectionRegex.Matches(notes))
+        {
+            var id = match.Groups["id"].Value;
+            var content = match.Groups["content"].Value.Trim('\r', '\n');
+            sections[id] = content;
+        }
+
+        return sections;
+    }
+
+    private static string ResolveScope(string? requestedScope, IReadOnlyDictionary<string, string> sections)
+    {
+        if (!string.IsNullOrWhiteSpace(requestedScope))
+            return requestedScope.Trim().ToLowerInvariant();
+
+        if (!sections.TryGetValue("active-scope", out var activeScopeContent))
+            return "current-projects";
+
+        var match = Regex.Match(activeScopeContent, @"current\s*:\s*(?<scope>[A-Za-z0-9._-]+)", RegexOptions.IgnoreCase);
+        return match.Success
+            ? match.Groups["scope"].Value.Trim().ToLowerInvariant()
+            : "current-projects";
+    }
+
+    private static string CompactNotes(string notes)
+    {
+        var sections = ParseSections(notes);
+        if (sections.Count == 0)
+            return NormalizeWhitespace(notes);
+
+        var preferredOrder = new[]
+        {
+            "core-software-context",
+            "language-style-ru",
+            "active-scope",
+            "current-task",
+            "scope-current-projects",
+            "scope-portal",
+            "scope-mixed",
+            "execution-gate-v1",
+            "response-finalizer-v1",
+            "hot-context-writing-contract",
+            "ontology-router-v1",
+            "memory-architecture-v1",
+            "memory-load-policy-v1",
+            "memory-compaction-loop-v1",
+            "archive-index-v1"
+        };
+
+        var blocks = new List<string>();
+        foreach (var id in preferredOrder)
+        {
+            if (!sections.TryGetValue(id, out var content))
+                continue;
+
+            blocks.Add($"<!-- section:{id} -->\n{content}\n<!-- /section:{id} -->");
+            sections.Remove(id);
+        }
+
+        foreach (var id in sections.Keys.OrderBy(x => x, StringComparer.Ordinal))
+        {
+            blocks.Add($"<!-- section:{id} -->\n{sections[id]}\n<!-- /section:{id} -->");
+        }
+
+        return JoinBlocks(blocks.ToArray());
+    }
+
+    private static string NormalizeWhitespace(string text)
+    {
+        var normalized = text.Replace("\r\n", "\n");
+        normalized = Regex.Replace(normalized, @"\n{3,}", "\n\n");
+        return normalized.EndsWith('\n') ? normalized : normalized + "\n";
     }
 }

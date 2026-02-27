@@ -54,6 +54,21 @@ internal static class ToolCatalog
         },
         new()
         {
+            Name = "read_hot_context",
+            Description = "Прочитать только горячий контекст (L0/L1) без загрузки архивного хвоста. По active_scope выбирает соответствующий scope-срез.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    workspace_path = new { type = "string", description = "Каталог workspace." },
+                    active_scope = new { type = "string", description = "Опционально: current-projects | portal | mixed." }
+                },
+                required = new[] { "workspace_path" }
+            })
+        },
+        new()
+        {
             Name = "upsert_agent_notes_section",
             Description = "Точечно вставить/обновить секцию заметок по section_id без полной перезаписи файла. Секция оформляется маркерами <!-- section:ID --> ... <!-- /section:ID -->. Путь: AGENT_NOTES_FILE (если задана) иначе workspace_path/.cascade-ide/agent-notes.md.",
             InputSchema = Schema(new
@@ -112,6 +127,39 @@ internal static class ToolCatalog
                     head_limit = new { type = "integer", description = "Сколько совпадений вернуть (по умолчанию 20)." }
                 },
                 required = new[] { "workspace_path", "query" }
+            })
+        },
+        new()
+        {
+            Name = "extract_from_archive",
+            Description = "Точечное извлечение фактов из архивной ревизии без чтения всего файла.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    workspace_path = new { type = "string", description = "Каталог workspace." },
+                    query = new { type = "string", description = "Подстрока для поиска в архивной ревизии." },
+                    revision_file = new { type = "string", description = "Имя ревизии. Если не задано — берется последняя." },
+                    head_limit = new { type = "integer", description = "Сколько совпадений вернуть (по умолчанию 10)." },
+                    context_lines = new { type = "integer", description = "Контекст строк вокруг совпадения (по умолчанию 2)." }
+                },
+                required = new[] { "workspace_path", "query" }
+            })
+        },
+        new()
+        {
+            Name = "compact_hot_context",
+            Description = "Ужать hot-context: удалить дубли секций, нормализовать формат. По умолчанию preview, apply=true для записи.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    workspace_path = new { type = "string", description = "Каталог workspace." },
+                    apply = new { type = "boolean", description = "true — применить изменения, false — только превью." }
+                },
+                required = new[] { "workspace_path" }
             })
         }
     ];

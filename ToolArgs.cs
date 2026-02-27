@@ -44,4 +44,18 @@ internal static class ToolArgs
     }
 
     internal static bool IsValidSectionId(string sectionId) => Regex.IsMatch(sectionId, "^[A-Za-z0-9._-]+$");
+
+    internal static bool GetBoolOrDefault(IReadOnlyDictionary<string, JsonElement> args, string key, bool defaultValue)
+    {
+        if (!args.TryGetValue(key, out var raw))
+            return defaultValue;
+
+        return raw.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String when bool.TryParse(raw.GetString(), out var parsed) => parsed,
+            _ => defaultValue
+        };
+    }
 }
