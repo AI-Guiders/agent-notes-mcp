@@ -171,6 +171,7 @@ internal sealed class NotesStorage
             "current-task",
             "core-software-context",
             "language-style-ru",
+            "personal-workstyle-v1",
             "execution-gate-v1",
             "response-finalizer-v1",
             "hot-context-writing-contract",
@@ -413,6 +414,7 @@ internal sealed class NotesStorage
         {
             "core-software-context",
             "language-style-ru",
+            "personal-workstyle-v1",
             "active-scope",
             "current-task",
             "scope-current-projects",
