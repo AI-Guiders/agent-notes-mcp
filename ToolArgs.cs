@@ -1,0 +1,47 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+internal static class ToolArgs
+{
+    internal static string RequiredString(IReadOnlyDictionary<string, JsonElement> args, string key)
+    {
+        if (!args.TryGetValue(key, out var value))
+            throw new ArgumentException($"{key} is required.");
+        var str = value.GetString();
+        if (string.IsNullOrWhiteSpace(str))
+            throw new ArgumentException($"{key} is required.");
+        return str.Trim();
+    }
+
+    internal static string? OptionalString(IReadOnlyDictionary<string, JsonElement> args, string key)
+    {
+        if (!args.TryGetValue(key, out var value))
+            return null;
+        var str = value.GetString();
+        return string.IsNullOrWhiteSpace(str) ? null : str.Trim();
+    }
+
+    internal static int GetIntOrDefault(IReadOnlyDictionary<string, JsonElement> args, string key, int defaultValue, int min, int max)
+    {
+        if (!args.TryGetValue(key, out var raw))
+            return defaultValue;
+
+        int parsed;
+        if (raw.ValueKind == JsonValueKind.Number)
+        {
+            parsed = raw.GetInt32();
+        }
+        else if (raw.ValueKind == JsonValueKind.String && int.TryParse(raw.GetString(), out var asInt))
+        {
+            parsed = asInt;
+        }
+        else
+        {
+            return defaultValue;
+        }
+
+        return Math.Clamp(parsed, min, max);
+    }
+
+    internal static bool IsValidSectionId(string sectionId) => Regex.IsMatch(sectionId, "^[A-Za-z0-9._-]+$");
+}
