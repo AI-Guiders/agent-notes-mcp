@@ -1,6 +1,14 @@
 # Agent Notes MCP
 
-MCP-сервер с тремя тулами: **read_agent_notes**, **write_agent_notes**, **append_agent_notes**. Агент сам решает, когда, что и в каком формате сохранять в заметки; файл лежит в `workspace_path/.cascade-ide/agent-notes.md`. Для непрерывности между сессиями и до суммаризации — подключается в Cursor без Cascade IDE.
+MCP-сервер для долговременных заметок агента. Базовый файл: `workspace_path/.cascade-ide/agent-notes.md` (или путь из `AGENT_NOTES_FILE`). Для непрерывности между сессиями и до суммаризации — подключается в Cursor без Cascade IDE.
+
+MLP-v1 в этом репозитории:
+
+- атомарная запись;
+- автоматические ревизии перед изменениями;
+- безопасный append и точечный upsert по секциям;
+- поиск по заметкам;
+- rollback к ревизии.
 
 ## Стек
 
@@ -17,12 +25,30 @@ dotnet publish -c Release -o publish
 ## Тулы
 
 | Имя | Описание | Аргументы |
-|-----|----------|----------|
+| ----- | ---------- | ---------- |
 | `read_agent_notes` | Прочитать заметки. | `workspace_path` |
-| `write_agent_notes` | Записать заметки (**полная замена** файла). Опасность: если передать только свой блок — всё остальное сотрётся. | `workspace_path`, `content` |
-| `append_agent_notes` | **Добавить** блок в конец файла без перезаписи. Рекомендуется для добавления своего блока (Claude, Composer и др.), чтобы не стереть заметки других. | `workspace_path`, `content` |
+| `write_agent_notes` | Записать заметки (**полная замена** файла). Перед заменой текущая версия сохраняется в ревизии. | `workspace_path`, `content` |
+| `append_agent_notes` | Добавить блок в конец без полной перезаписи. Перед изменением создаётся ревизия. | `workspace_path`, `content` |
+| `upsert_agent_notes_section` | Вставить/обновить секцию по `section_id` (через маркеры HTML-комментариев). | `workspace_path`, `section_id`, `content` |
+| `search_agent_notes` | Поиск по заметкам (case-insensitive), возвращает строки и номера строк. | `workspace_path`, `query`, `head_limit?` |
+| `list_agent_notes_revisions` | Список доступных ревизий для отката. | `workspace_path`, `limit?` |
+| `rollback_agent_notes` | Откатить заметки к выбранной (или последней) ревизии. | `workspace_path`, `revision_file?` |
 
-`workspace_path` — каталог workspace (корень проекта в Cursor). Файл: `workspace_path/.cascade-ide/agent-notes.md`.
+`workspace_path` — каталог workspace (корень проекта в Cursor).  
+Файл: `workspace_path/.cascade-ide/agent-notes.md`.  
+Ревизии: `workspace_path/.cascade-ide/.revisions/*.md`.
+
+## Формат секций для upsert
+
+`upsert_agent_notes_section` использует маркеры:
+
+```md
+<!-- section:team-rules -->
+... содержимое секции ...
+<!-- /section:team-rules -->
+```
+
+Если секция уже есть — заменяется целиком; если нет — добавляется в конец файла.
 
 ## Репозиторий и субмодуль
 
