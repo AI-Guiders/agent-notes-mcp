@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="AgentNotesMcp.csproj" />
+  <Project Path="AgentNotesMcp.Tests/AgentNotesMcp.Tests.csproj" />
 </Solution>
