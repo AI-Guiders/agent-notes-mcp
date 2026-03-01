@@ -16,6 +16,12 @@ MLP-v1 в этом репозитории:
 - целевое извлечение из архивных ревизий (`extract_from_archive`);
 - полуавтоматическое ужатие hot-context (`compact_hot_context`).
 
+Новые возможности v0.4.0:
+
+- health-check памяти (`memory_health`);
+- router-first контекст-пакет по запросу (`route_context`);
+- контракт `KB v2` для эксплуатационного режима (`KB-V2-CONTRACT.md`).
+
 ## Стек
 
 - C#, .NET 10, win-x64, self-contained (как dotnet-debug-mcp и roslyn-mcp).
@@ -33,6 +39,8 @@ dotnet publish -c Release -o publish
 | Имя | Описание | Аргументы |
 | ----- | ---------- | ---------- |
 | `read_agent_notes` | Прочитать заметки. | `workspace_path` |
+| `memory_health` | Быстрый health-check памяти: размер hot-context, обязательные секции, предупреждения по бюджету и рекомендации по compaction. | `workspace_path`, `active_scope?` |
+| `route_context` | Подобрать релевантные секции под задачу и вернуть компактный assembled context. | `workspace_path`, `query`, `active_scope?`, `max_sections?`, `max_chars?` |
 | `read_hot_context` | Прочитать только горячий контекст L0/L1 (без архивного хвоста). Сначала берёт `active_scope`, иначе пытается определить scope из секции `workspace-scope-map-v1`, и только потом fallback на `active-scope.current`. | `workspace_path`, `active_scope?` |
 | `write_agent_notes` | Записать заметки (**полная замена** файла). Перед заменой текущая версия сохраняется в ревизии. | `workspace_path`, `content` |
 | `append_agent_notes` | Добавить блок в конец без полной перезаписи. Перед изменением создаётся ревизия. | `workspace_path`, `content` |
