@@ -10,6 +10,39 @@ internal static class ToolCatalog
     [
         new()
         {
+            Name = "memory_health",
+            Description = "Быстрый health-check памяти: размер hot-context, обязательные секции, предупреждения по бюджету и рекомендации по compaction.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    workspace_path = new { type = "string", description = "Каталог workspace." },
+                    active_scope = new { type = "string", description = "Опционально: current-projects | portal | mixed." }
+                },
+                required = new[] { "workspace_path" }
+            })
+        },
+        new()
+        {
+            Name = "route_context",
+            Description = "Подобрать релевантные секции из agent-notes по запросу и собрать компактный context-пакет (router-first).",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    workspace_path = new { type = "string", description = "Каталог workspace." },
+                    query = new { type = "string", description = "Поисковый запрос или задача для маршрутизации контекста." },
+                    active_scope = new { type = "string", description = "Опционально: current-projects | portal | mixed." },
+                    max_sections = new { type = "integer", description = "Максимум секций в ответе (по умолчанию 5)." },
+                    max_chars = new { type = "integer", description = "Бюджет символов для assembled_context (по умолчанию 12000)." }
+                },
+                required = new[] { "workspace_path", "query" }
+            })
+        },
+        new()
+        {
             Name = "write_agent_notes",
             Description = "Записать заметки агента (полная замена файла). Агент сам решает, когда, что и в каком формате сохранять. Путь: если задана переменная окружения AGENT_NOTES_FILE — используется она (один файл во всех workspace); иначе workspace_path/.cascade-ide/agent-notes.md. ВНИМАНИЕ: перезаписывает файл целиком; для добавления блока без риска стереть остальное используйте append_agent_notes.",
             InputSchema = Schema(new

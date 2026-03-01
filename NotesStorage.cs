@@ -178,12 +178,7 @@ internal sealed class NotesStorage
             "ontology-router-v1"
         }.ToList();
 
-        var scopeId = resolvedScope switch
-        {
-            "portal" => "scope-portal",
-            "mixed" => "scope-mixed",
-            _ => "scope-current-projects"
-        };
+        var scopeId = ResolveScopeSectionId(resolvedScope, sections);
         priorityIds.Add(scopeId);
 
         var loaded = new List<string>();
@@ -202,6 +197,185 @@ internal sealed class NotesStorage
             active_scope = resolvedScope,
             loaded_sections = loaded,
             content = JoinBlocks(blocks.ToArray()).TrimEnd('\n')
+        };
+
+        return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    internal string MemoryHealth(string workspacePath, string? activeScope)
+    {
+        var notesPath = GetNotesPath(workspacePath);
+        var notes = Read(workspacePath);
+        var sections = ParseSections(notes);
+        var resolvedScope = ResolveScope(activeScope, sections, workspacePath);
+        var hotSectionIds = BuildHotSectionIds(resolvedScope, sections);
+        var hotSections = hotSectionIds
+            .Where(sections.ContainsKey)
+            .Select(id => new
+            {
+                id,
+                chars = sections[id].Length,
+                lines = CountLines(sections[id])
+            })
+            .ToArray();
+
+        var hotChars = hotSections.Sum(x => x.chars);
+        var hotLines = hotSections.Sum(x => x.lines);
+        var missingCoreSections = new[] { "active-scope", "current-task" }
+            .Where(required => !sections.ContainsKey(required))
+            .ToArray();
+
+        var warnings = new List<string>();
+        var recommendCompaction = false;
+
+        if (hotChars > 12000)
+        {
+            warnings.Add("hot_context_over_critical_budget");
+            recommendCompaction = true;
+        }
+        else if (hotChars > 6000)
+        {
+            warnings.Add("hot_context_over_warning_budget");
+            recommendCompaction = true;
+        }
+
+        if (missingCoreSections.Length > 0)
+            warnings.Add("missing_core_sections");
+
+        var healthLevel = warnings.Contains("hot_context_over_critical_budget", StringComparer.Ordinal)
+            ? "critical"
+            : warnings.Count > 0
+                ? "warning"
+                : "good";
+
+        var recommendations = new List<string>();
+        if (recommendCompaction)
+            recommendations.Add("Run compact_hot_context with apply=true after preview to keep L0/L1 small.");
+        if (missingCoreSections.Length > 0)
+            recommendations.Add("Restore required core sections via upsert_agent_notes_section.");
+        if (recommendations.Count == 0)
+            recommendations.Add("Keep current memory shape; no immediate action required.");
+
+        var payload = new
+        {
+            workspace_path = workspacePath,
+            notes_path = notesPath,
+            notes_exists = File.Exists(notesPath),
+            resolved_scope = resolvedScope,
+            total_chars = notes.Length,
+            total_lines = CountLines(notes),
+            section_count = sections.Count,
+            hot_context = new
+            {
+                section_ids = hotSectionIds,
+                loaded_section_count = hotSections.Length,
+                chars = hotChars,
+                lines = hotLines
+            },
+            missing_core_sections = missingCoreSections,
+            largest_sections = sections
+                .Select(kv => new
+                {
+                    id = kv.Key,
+                    chars = kv.Value.Length,
+                    lines = CountLines(kv.Value)
+                })
+                .OrderByDescending(x => x.chars)
+                .Take(5)
+                .ToArray(),
+            warnings,
+            recommend_compaction = recommendCompaction,
+            health_level = healthLevel,
+            recommendations
+        };
+
+        return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    internal string RouteContext(
+        string workspacePath,
+        string query,
+        string? activeScope,
+        int maxSections,
+        int maxChars)
+    {
+        var notes = Read(workspacePath);
+        if (string.IsNullOrWhiteSpace(notes))
+            return JsonSerializer.Serialize(new
+            {
+                query,
+                selected = Array.Empty<object>(),
+                assembled_context = ""
+            }, new JsonSerializerOptions { WriteIndented = true });
+
+        var sections = ParseSections(notes);
+        var resolvedScope = ResolveScope(activeScope, sections, workspacePath);
+        var hotSectionIds = BuildHotSectionIds(resolvedScope, sections);
+        var boosted = hotSectionIds
+            .Select((id, idx) => (id, bonus: Math.Max(0, 30 - idx * 2)))
+            .ToDictionary(x => x.id, x => x.bonus, StringComparer.Ordinal);
+
+        var tokens = TokenizeQuery(query);
+        var candidates = new List<(string id, string content, int score, int matchCount)>();
+        foreach (var (id, content) in sections)
+        {
+            var matchCount = CountMatches(content, tokens) + CountMatches(id, tokens);
+            var score = matchCount * 4;
+
+            if (content.Contains(query, StringComparison.OrdinalIgnoreCase))
+                score += 24;
+            if (id.Contains(query, StringComparison.OrdinalIgnoreCase))
+                score += 20;
+            if (boosted.TryGetValue(id, out var bonus))
+                score += bonus;
+
+            if (score <= 0)
+                continue;
+
+            candidates.Add((id, content, score, matchCount));
+        }
+
+        var selected = candidates
+            .OrderByDescending(x => x.score)
+            .ThenBy(x => x.id, StringComparer.Ordinal)
+            .Take(maxSections)
+            .ToArray();
+
+        var assembled = new StringBuilder();
+        var emitted = new List<object>();
+        var truncated = false;
+        foreach (var item in selected)
+        {
+            var block = $"<!-- section:{item.id} -->\n{item.content}\n<!-- /section:{item.id} -->\n\n";
+            if (assembled.Length + block.Length > maxChars)
+            {
+                truncated = true;
+                break;
+            }
+
+            assembled.Append(block);
+            emitted.Add(new
+            {
+                id = item.id,
+                score = item.score,
+                match_count = item.matchCount,
+                chars = item.content.Length,
+                lines = CountLines(item.content),
+                preview = BuildPreview(item.content, 220)
+            });
+        }
+
+        var payload = new
+        {
+            query,
+            resolved_scope = resolvedScope,
+            total_candidates = candidates.Count,
+            selected_count = emitted.Count,
+            max_sections = maxSections,
+            max_chars = maxChars,
+            truncated,
+            selected = emitted,
+            assembled_context = assembled.ToString().TrimEnd('\n')
         };
 
         return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
@@ -390,6 +564,62 @@ internal sealed class NotesStorage
         return sections;
     }
 
+    private static string[] BuildHotSectionIds(string resolvedScope, IReadOnlyDictionary<string, string> sections)
+    {
+        var ids = new[]
+        {
+            "active-scope",
+            "current-task",
+            "core-software-context",
+            "language-style-ru",
+            "personal-workstyle-v1",
+            "execution-gate-v1",
+            "response-finalizer-v1",
+            "hot-context-writing-contract",
+            "ontology-router-v1"
+        }.ToList();
+
+        ids.Add(ResolveScopeSectionId(resolvedScope, sections));
+        return ids.Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    private static int CountLines(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return 0;
+        return content.Replace("\r\n", "\n").Split('\n').Length;
+    }
+
+    private static string[] TokenizeQuery(string query)
+    {
+        var tokens = Regex.Split(query.ToLowerInvariant(), @"[^a-zа-я0-9._-]+")
+            .Where(token => token.Length >= 3)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        return tokens.Length > 0 ? tokens : [query.ToLowerInvariant()];
+    }
+
+    private static int CountMatches(string text, IReadOnlyList<string> tokens)
+    {
+        var normalized = text.ToLowerInvariant();
+        var count = 0;
+        foreach (var token in tokens)
+        {
+            if (normalized.Contains(token, StringComparison.Ordinal))
+                count++;
+        }
+
+        return count;
+    }
+
+    private static string BuildPreview(string content, int maxChars)
+    {
+        var normalized = Regex.Replace(content.Replace("\r\n", "\n"), @"\s+", " ").Trim();
+        if (normalized.Length <= maxChars)
+            return normalized;
+        return normalized[..maxChars] + "...";
+    }
+
     private static string ResolveScope(string? requestedScope, IReadOnlyDictionary<string, string> sections, string workspacePath)
     {
         if (!string.IsNullOrWhiteSpace(requestedScope))
@@ -469,6 +699,19 @@ internal sealed class NotesStorage
 
     private static string NormalizePathKey(string path) =>
         path.Trim().Replace('/', '\\').TrimEnd('\\');
+
+    private static string ResolveScopeSectionId(string resolvedScope, IReadOnlyDictionary<string, string> sections)
+    {
+        if (string.IsNullOrWhiteSpace(resolvedScope))
+            return "scope-current-projects";
+
+        var normalizedScope = resolvedScope.Trim().ToLowerInvariant();
+        var genericScopeId = $"scope-{normalizedScope}";
+        if (sections.ContainsKey(genericScopeId))
+            return genericScopeId;
+
+        return "scope-current-projects";
+    }
 
     private static bool IsPrefixPathMatch(string workspacePath, string mapKeyPath)
     {

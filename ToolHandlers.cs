@@ -20,6 +20,8 @@ internal sealed class ToolHandlers
     internal string Handle(string toolName, IReadOnlyDictionary<string, JsonElement> args) =>
         toolName switch
         {
+            "memory_health" => MemoryHealth(args),
+            "route_context" => RouteContext(args),
             "write_agent_notes" => Write(args),
             "append_agent_notes" => Append(args),
             "read_agent_notes" => Read(args),
@@ -32,6 +34,23 @@ internal sealed class ToolHandlers
             "compact_hot_context" => CompactHotContext(args),
             _ => throw new ArgumentException($"Unknown tool: {toolName}.")
         };
+
+    private string MemoryHealth(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var workspacePath = ToolArgs.RequiredString(args, "workspace_path");
+        var activeScope = ToolArgs.OptionalString(args, "active_scope");
+        return _storage.MemoryHealth(workspacePath, activeScope);
+    }
+
+    private string RouteContext(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var workspacePath = ToolArgs.RequiredString(args, "workspace_path");
+        var query = ToolArgs.RequiredString(args, "query");
+        var activeScope = ToolArgs.OptionalString(args, "active_scope");
+        var maxSections = ToolArgs.GetIntOrDefault(args, "max_sections", 5, 1, 20);
+        var maxChars = ToolArgs.GetIntOrDefault(args, "max_chars", 12000, 1000, 40000);
+        return _storage.RouteContext(workspacePath, query, activeScope, maxSections, maxChars);
+    }
 
     private string Write(IReadOnlyDictionary<string, JsonElement> args)
     {
