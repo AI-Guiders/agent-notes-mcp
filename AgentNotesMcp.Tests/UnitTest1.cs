@@ -1,5 +1,7 @@
 using System.Text.Json;
 
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
 namespace AgentNotesMcp.Tests;
 
 public sealed class NotesStorageTests
@@ -8,6 +10,7 @@ public sealed class NotesStorageTests
     public void UpsertSection_CreatesAndUpdatesWithoutDuplicates()
     {
         using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
         var storage = new NotesStorage();
 
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "current-task", "first state"));
@@ -26,6 +29,7 @@ public sealed class NotesStorageTests
     public void Search_IsCaseInsensitive_AndRespectsHeadLimit()
     {
         using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
         var storage = new NotesStorage();
 
         var content = string.Join('\n', new[]
@@ -50,6 +54,7 @@ public sealed class NotesStorageTests
     public void Rollback_RestoresPreviousContent_AndCreatesRollbackRevision()
     {
         using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
         var storage = new NotesStorage();
 
         Assert.Equal("OK", storage.Write(temp.WorkspacePath, "v1"));
@@ -72,6 +77,7 @@ public sealed class NotesStorageTests
     public void EndToEnd_WriteUpsertSearchRollback_WorksAndCleansState()
     {
         using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
         var storage = new NotesStorage();
 
         Assert.Equal("OK", storage.Write(temp.WorkspacePath, "seed"));
@@ -96,6 +102,7 @@ public sealed class NotesStorageTests
     public void MemoryHealth_ReportsWarning_WhenHotContextIsTooLarge()
     {
         using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
         var storage = new NotesStorage();
 
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: current-projects"));
@@ -114,6 +121,7 @@ public sealed class NotesStorageTests
     public void RouteContext_ReturnsRelevantSectionsAndAssembledContext()
     {
         using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
         var storage = new NotesStorage();
 
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: current-projects"));
@@ -159,21 +167,26 @@ public sealed class NotesStorageTests
 
     private sealed class TempWorkspace : IDisposable
     {
-        private TempWorkspace(string rootPath, string workspacePath)
+        private TempWorkspace(string rootPath, string workspacePath, string notesFilePath)
         {
             RootPath = rootPath;
             WorkspacePath = workspacePath;
+            NotesFilePath = notesFilePath;
         }
 
         internal string RootPath { get; }
         internal string WorkspacePath { get; }
+        internal string NotesFilePath { get; }
 
         internal static TempWorkspace Create()
         {
             var root = Path.Combine(Path.GetTempPath(), "AgentNotesMcpTests", Guid.NewGuid().ToString("N"));
             var workspace = Path.Combine(root, "workspace");
             Directory.CreateDirectory(workspace);
-            return new TempWorkspace(root, workspace);
+            var notesDir = Path.Combine(root, "notes");
+            Directory.CreateDirectory(notesDir);
+            var notesFile = Path.Combine(notesDir, "agent-notes.md");
+            return new TempWorkspace(root, workspace, notesFile);
         }
 
         public void Dispose()
@@ -188,5 +201,26 @@ public sealed class NotesStorageTests
                 throw new InvalidOperationException($"Failed to cleanup test temp directory: {RootPath}", ex);
             }
         }
+    }
+
+    private sealed class EnvVarScope : IDisposable
+    {
+        private readonly string _name;
+        private readonly string? _previous;
+
+        private EnvVarScope(string name, string? previous)
+        {
+            _name = name;
+            _previous = previous;
+        }
+
+        internal static EnvVarScope Set(string name, string value)
+        {
+            var previous = Environment.GetEnvironmentVariable(name);
+            Environment.SetEnvironmentVariable(name, value);
+            return new EnvVarScope(name, previous);
+        }
+
+        public void Dispose() => Environment.SetEnvironmentVariable(_name, _previous);
     }
 }
