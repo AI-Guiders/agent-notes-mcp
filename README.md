@@ -2,6 +2,11 @@
 
 MCP-сервер для долговременных заметок агента. Базовый файл: `workspace_path/.cascade-ide/agent-notes.md` (или путь из `AGENT_NOTES_FILE`). Для непрерывности между сессиями и до суммаризации — подключается в Cursor без Cascade IDE.
 
+## Central Wiki
+
+- Единая wiki команды: [Agent Notes Wiki](http://193.124.113.7/Krawler/agent-notes/-/wikis/home)
+- В этом проекте wiki не дублируется; здесь только ссылка на центральный источник.
+
 MLP-v1 в этом репозитории:
 
 - атомарная запись;
