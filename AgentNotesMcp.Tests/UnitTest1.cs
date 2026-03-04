@@ -118,6 +118,42 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
+    public void ReadHotContext_LoadsL0FromMemoryArchitectureSection_WhenPresent()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+
+        var memoryArch = """
+            ## Memory Architecture v1
+            ### L0: Hot State (always load)
+            - custom-baseline-a
+            - custom-baseline-b
+            - active-scope
+            - current-task
+            ### L1: Operational
+            - scope-current-projects
+            """;
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "memory-architecture-v1", memoryArch));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "custom-baseline-a", "baseline A"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "custom-baseline-b", "baseline B"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: current-projects"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "current-task", "task"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "scope-current-projects", "scope body"));
+
+        var json = storage.ReadHotContext(temp.WorkspacePath, null);
+        using var doc = JsonDocument.Parse(json);
+        var loaded = doc.RootElement.GetProperty("loaded_sections");
+        var ids = new List<string>();
+        foreach (var e in loaded.EnumerateArray())
+            ids.Add(e.GetString() ?? "");
+
+        Assert.Contains("custom-baseline-a", ids);
+        Assert.Contains("custom-baseline-b", ids);
+        Assert.True(ids.IndexOf("custom-baseline-a") < ids.IndexOf("active-scope"), "L0 from file should appear before scope");
+    }
+
+    [Fact]
     public void RouteContext_ReturnsRelevantSectionsAndAssembledContext()
     {
         using var temp = TempWorkspace.Create();

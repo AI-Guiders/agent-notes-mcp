@@ -46,7 +46,7 @@ dotnet publish -c Release -o publish
 | `read_agent_notes` | Прочитать заметки. | `workspace_path` |
 | `memory_health` | Быстрый health-check памяти: размер hot-context, обязательные секции, предупреждения по бюджету и рекомендации по compaction. | `workspace_path`, `active_scope?` |
 | `route_context` | Подобрать релевантные секции под задачу и вернуть компактный assembled context. | `workspace_path`, `query`, `active_scope?`, `max_sections?`, `max_chars?` |
-| `read_hot_context` | Прочитать только горячий контекст L0/L1 (без архивного хвоста). Сначала берёт `active_scope`, иначе пытается определить scope из секции `workspace-scope-map-v1`, и только потом fallback на `active-scope.current`. | `workspace_path`, `active_scope?` |
+| `read_hot_context` | Прочитать только горячий контекст L0/L1 (без архивного хвоста). Список L0 (always load) **читается из секции `memory-architecture-v1`** (блок «### L0: Hot State» — буллеты `- section-id` до следующего `###`); при отсутствии или пустом разборе используется встроенный fallback. Затем добавляется секция scope из L1. Сначала берёт `active_scope`, иначе — из `workspace-scope-map-v1` или `active-scope.current`. | `workspace_path`, `active_scope?` |
 | `write_agent_notes` | Записать заметки (**полная замена** файла). Перед заменой текущая версия сохраняется в ревизии. | `workspace_path`, `content` |
 | `append_agent_notes` | Добавить блок в конец без полной перезаписи. Перед изменением создаётся ревизия. | `workspace_path`, `content` |
 | `upsert_agent_notes_section` | Вставить/обновить секцию по `section_id` (через маркеры HTML-комментариев). | `workspace_path`, `section_id`, `content` |
