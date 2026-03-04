@@ -165,19 +165,8 @@ internal sealed class NotesStorage
         var sections = ParseSections(notes);
         var resolvedScope = ResolveScope(activeScope, sections, workspacePath);
 
-        var priorityIds = new[]
-        {
-            "active-scope",
-            "current-task",
-            "core-software-context",
-            "language-style-ru",
-            "personal-workstyle-v1",
-            "execution-gate-v1",
-            "response-finalizer-v1",
-            "hot-context-writing-contract",
-            "ontology-router-v1"
-        }.ToList();
-
+        var l0 = ParseL0FromMemoryArchitecture(sections.GetValueOrDefault("memory-architecture-v1"));
+        var priorityIds = (l0 ?? DefaultL0Ids()).ToList();
         var scopeId = ResolveScopeSectionId(resolvedScope, sections);
         priorityIds.Add(scopeId);
 
@@ -564,10 +553,45 @@ internal sealed class NotesStorage
         return sections;
     }
 
-    private static string[] BuildHotSectionIds(string resolvedScope, IReadOnlyDictionary<string, string> sections)
+    /// <summary>Parse L0 section IDs from memory-architecture-v1 content (block after "### L0:" until next "###").</summary>
+    private static IReadOnlyList<string>? ParseL0FromMemoryArchitecture(string? content)
     {
-        var ids = new[]
+        if (string.IsNullOrWhiteSpace(content))
+            return null;
+
+        var lines = content.Replace("\r\n", "\n").Split('\n');
+        var inL0 = false;
+        var ids = new List<string>();
+        foreach (var line in lines)
         {
+            var t = line.Trim();
+            if (t.StartsWith("### L0:", StringComparison.OrdinalIgnoreCase))
+            {
+                inL0 = true;
+                continue;
+            }
+            if (inL0)
+            {
+                if (t.StartsWith("### ", StringComparison.Ordinal))
+                    break;
+                if (t.StartsWith("- ", StringComparison.Ordinal))
+                {
+                    var id = t[2..].Trim();
+                    if (id.Length > 0 && Regex.IsMatch(id, "^[A-Za-z0-9._-]+$"))
+                        ids.Add(id);
+                }
+            }
+        }
+
+        return ids.Count > 0 ? ids : null;
+    }
+
+    private static string[] DefaultL0Ids()
+    {
+        return
+        [
+            "baseline-integrity-epistemic-v1",
+            "epistemic-default-distrust-v1",
             "active-scope",
             "current-task",
             "core-software-context",
@@ -577,8 +601,28 @@ internal sealed class NotesStorage
             "response-finalizer-v1",
             "hot-context-writing-contract",
             "ontology-router-v1"
-        }.ToList();
+        ];
+    }
 
+    private static string[] DefaultCompactOrderSuffix()
+    {
+        return
+        [
+            "workspace-scope-map-v1",
+            "scope-current-projects",
+            "scope-portal",
+            "scope-mixed",
+            "memory-architecture-v1",
+            "memory-load-policy-v1",
+            "memory-compaction-loop-v1",
+            "archive-index-v1"
+        ];
+    }
+
+    private static string[] BuildHotSectionIds(string resolvedScope, IReadOnlyDictionary<string, string> sections)
+    {
+        var l0 = ParseL0FromMemoryArchitecture(sections.GetValueOrDefault("memory-architecture-v1"));
+        var ids = (l0 ?? DefaultL0Ids()).ToList();
         ids.Add(ResolveScopeSectionId(resolvedScope, sections));
         return ids.Distinct(StringComparer.Ordinal).ToArray();
     }
@@ -730,26 +774,10 @@ internal sealed class NotesStorage
         if (sections.Count == 0)
             return NormalizeWhitespace(notes);
 
-        var preferredOrder = new[]
-        {
-            "core-software-context",
-            "language-style-ru",
-            "personal-workstyle-v1",
-            "workspace-scope-map-v1",
-            "active-scope",
-            "current-task",
-            "scope-current-projects",
-            "scope-portal",
-            "scope-mixed",
-            "execution-gate-v1",
-            "response-finalizer-v1",
-            "hot-context-writing-contract",
-            "ontology-router-v1",
-            "memory-architecture-v1",
-            "memory-load-policy-v1",
-            "memory-compaction-loop-v1",
-            "archive-index-v1"
-        };
+        var l0 = ParseL0FromMemoryArchitecture(sections.GetValueOrDefault("memory-architecture-v1"));
+        var startIds = (l0 ?? DefaultL0Ids()).ToList();
+        var suffixIds = DefaultCompactOrderSuffix().Where(id => !startIds.Contains(id, StringComparer.Ordinal));
+        var preferredOrder = startIds.Concat(suffixIds).ToArray();
 
         var blocks = new List<string>();
         foreach (var id in preferredOrder)
