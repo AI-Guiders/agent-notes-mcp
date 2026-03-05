@@ -86,12 +86,17 @@ dotnet publish -c Release -o publish
 Поддерживаются разделители `=>`, `:` и `=`.  
 Матч по пути: сначала exact, иначе longest-prefix (с проверкой границы `\`), после нормализации `/` vs `\` и хвостового `\`.
 
-## Репозиторий и субмодуль
+## Репозиторий и субмодуль (legacy заметка)
 
 Проект предназначен для отдельного репо на GitLab и подключения как субмодуль в репо **open** (financial-open), наряду с dotnet-debug-mcp, roslyn-mcp, cascade-ide.
 
-После создания репо на GitLab (например `Krawler/agent-notes-mcp`), пуша туда этого кода и перехода в каталог `open` выполнить:
+Этот README и код в каталоге `open/agent-notes-mcp` отражают **legacy‑состояние** проекта (эксперименты до публикации Integrity POST и TPM‑архитектуры).  
+Актуальный репозиторий и место публикации могут отличаться; конкретный URL и хост следует настраивать в своём окружении самостоятельно.
+
+Пример добавления субмодуля в своём репозитории:
 
 ```bash
-git submodule add http://193.124.113.7/Krawler/agent-notes-mcp.git agent-notes-mcp
+git submodule add <URL_ТВОЕГО_REPO_AGENT_NOTES_MCP> agent-notes-mcp
 ```
+
+> Важно: любые ранние реализации integrity/POST из legacy‑репозиториев **не считаются** TPM‑корнями или авторитетными источниками для Integrity POST — валидными являются только версии `integrity-core` и спецификации, опубликованные через назначенные TPM‑узлы (см. `knowledge/META/integrity-post-spec-v1.md` и документы kb-public).
