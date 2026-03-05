@@ -174,6 +174,8 @@ internal sealed class NotesStorage
         var blocks = new List<string>();
         foreach (var id in priorityIds.Distinct(StringComparer.Ordinal))
         {
+            if (IsL1Excluded(id))
+                continue;
             if (!sections.TryGetValue(id, out var content))
                 continue;
 
@@ -619,12 +621,24 @@ internal sealed class NotesStorage
         ];
     }
 
+    /// <summary>L1 sections (load on demand): never include in hot context even if listed in memory-architecture L0.</summary>
+    private static bool IsL1Excluded(string sectionId)
+    {
+        return sectionId.StartsWith("hpmor-", StringComparison.OrdinalIgnoreCase)
+            || sectionId.Equals("it-source-mini-index-v1", StringComparison.Ordinal)
+            || sectionId.Equals("knowledge-index-v1", StringComparison.Ordinal)
+            || sectionId.Equals("imc-ui-ux-vision-v1", StringComparison.Ordinal)
+            || sectionId.Equals("psychology-gender-studies-subdomain-v1", StringComparison.Ordinal)
+            || sectionId.Equals("world-human-system-v1", StringComparison.Ordinal)
+            || sectionId.Equals("world-human-system-playbook-v1", StringComparison.Ordinal);
+    }
+
     private static string[] BuildHotSectionIds(string resolvedScope, IReadOnlyDictionary<string, string> sections)
     {
         var l0 = ParseL0FromMemoryArchitecture(sections.GetValueOrDefault("memory-architecture-v1"));
         var ids = (l0 ?? DefaultL0Ids()).ToList();
         ids.Add(ResolveScopeSectionId(resolvedScope, sections));
-        return ids.Distinct(StringComparer.Ordinal).ToArray();
+        return ids.Where(id => !IsL1Excluded(id)).Distinct(StringComparer.Ordinal).ToArray();
     }
 
     private static int CountLines(string content)
