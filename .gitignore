@@ -1,6 +1,7 @@
 bin/
 obj/
 publish/
+agent-notes-mcp-publish/
 .vs/
 *.user
 *.suo
