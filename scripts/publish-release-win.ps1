@@ -26,7 +26,7 @@ $token  = if ($Token) { $Token } else { $env:GITLAB_TOKEN }
 if (-not $baseUrl -or -not $token) {
     Write-Error "Set GITLAB_URL and GITLAB_TOKEN (or pass -GitLabUrl and -Token)."
 }
-$projectId = [System.Web.HttpUtility]::UrlEncode($ProjectPath)
+$projectId = $ProjectPath -replace '/', '%2F'
 $api = "$baseUrl/api/v4"
 $zipName = "agent-notes-mcp-win-x64.zip"
 $pkgName = "agent-notes-mcp"
@@ -46,7 +46,6 @@ Remove-Item -Recurse -Force $outDir
 # Upload to Generic Package
 $uploadUrl = "$api/projects/$projectId/packages/generic/$pkgName/$Version/$zipName"
 Write-Host "Uploading to $uploadUrl ..."
-# Generic packages: PRIVATE-TOKEN for API uploads
 Invoke-RestMethod -Uri $uploadUrl -Method Put -InFile $zipPath -Headers @{ "PRIVATE-TOKEN" = $token } -ContentType "application/octet-stream"
 Write-Host "Uploaded."
 
