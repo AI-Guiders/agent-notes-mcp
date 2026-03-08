@@ -27,6 +27,10 @@ MLP-v1 в этом репозитории:
 - router-first контекст-пакет по запросу (`route_context`);
 - контракт `KB v2` для эксплуатационного режима (`KB-V2-CONTRACT.md`).
 
+Новые возможности v0.5.0:
+
+- запись и чтение файлов слоя **knowledge** канона: `write_knowledge_file` (полная замена), `append_knowledge_file` (добавить в конец без перезаписи), `upsert_knowledge_section` (точечное вставка/обновление секции по маркерам `<!-- section:ID -->`), `read_knowledge_file`. Путь к канону — `canon_path` или `AGENT_NOTES_CANON_PATH`. Меньше риска случайно перезаписать весь файл при точечных правках.
+
 ## Стек
 
 - C#, .NET 10, win-x64, self-contained (как dotnet-debug-mcp и roslyn-mcp).
@@ -55,10 +59,25 @@ dotnet publish -c Release -o publish
 | `compact_hot_context` | Удалить дубли секций и нормализовать структуру hot-context (preview/apply). | `workspace_path`, `apply?` |
 | `list_agent_notes_revisions` | Список доступных ревизий для отката. | `workspace_path`, `limit?` |
 | `rollback_agent_notes` | Откатить заметки к выбранной (или последней) ревизии. | `workspace_path`, `revision_file?` |
+| `write_knowledge_file` | Записать файл в **knowledge/** канона (полная замена). Для добавления блока — `append_knowledge_file`; для точечного обновления секции — `upsert_knowledge_section`. | `file_path`, `content`, `canon_path?` |
+| `append_knowledge_file` | Добавить блок в конец файла в **knowledge/** без перезаписи. Безопасно: существующее содержимое сохраняется. | `file_path`, `content`, `canon_path?` |
+| `upsert_knowledge_section` | Вставить/обновить секцию в файле **knowledge/** по `section_id` (маркеры `<!-- section:ID -->` … `<!-- /section:ID -->`). Точечное изменение. | `file_path`, `section_id`, `content`, `canon_path?` |
+| `delete_knowledge_section` | Удалить секцию из файла **knowledge/** по `section_id`. Если секции нет — `NO_CHANGES`. | `file_path`, `section_id`, `canon_path?` |
+| `delete_knowledge_file` | Удалить файл из **knowledge/** канона. Если файла нет — `NO_CHANGES`. | `file_path`, `canon_path?` |
+| `read_knowledge_file` | Прочитать файл из **knowledge/** канона. | `file_path`, `canon_path?` |
 
 `workspace_path` — каталог workspace (корень проекта в Cursor).  
 Файл: `workspace_path/.cascade-ide/agent-notes.md`.  
 Ревизии: `workspace_path/.cascade-ide/.revisions/*.md`.
+
+### Слой knowledge (канон)
+
+Инструменты `write_knowledge_file` и `read_knowledge_file` работают с каталогом **knowledge/** репозитория-канона (agent-notes), а не с текущим workspace. Это нужно, когда агент работает в другом workspace (например PersonalCursorFolder), а править надо файлы в каноне (index, kb-*, playbook-* и т.д.).
+
+- **canon_path** — корень репо agent-notes (каталог, в котором лежит подкаталог `knowledge/`). Опционален, если задана переменная окружения **AGENT_NOTES_CANON_PATH**.
+- **file_path** — относительный путь внутри `knowledge/`, например `kb-music-acoustics-v1.md`, `playbook-music-v1.md`. Не допускаются `..` и абсолютные пути.
+- **Когда что использовать:** полная замена файла — `write_knowledge_file`; добавить блок в конец — `append_knowledge_file`; вставить/обновить секцию по ID — `upsert_knowledge_section`; удалить секцию по ID — `delete_knowledge_section`. Append, upsert и delete снижают риск затереть весь файл.
+- Рекомендация: в окружении, где запускается MCP, задать `AGENT_NOTES_CANON_PATH=d:\Experiments\agent-notes` (или свой путь к канону), тогда при вызове можно не передавать `canon_path`.
 
 ## Формат секций для upsert
 

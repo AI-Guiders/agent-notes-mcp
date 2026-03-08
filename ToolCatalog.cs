@@ -194,6 +194,119 @@ internal static class ToolCatalog
                 },
                 required = new[] { "workspace_path" }
             })
+        },
+        new()
+        {
+            Name = "write_knowledge_file",
+            Description = "Записать файл в каталог knowledge/ канона (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Путь к канону: canon_path или AGENT_NOTES_CANON_PATH.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH." },
+                    file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например kb-music-acoustics-v1.md (без '..' и без абсолютного пути)." },
+                    content = new { type = "string", description = "Полное содержимое файла." },
+                    save_revision = new { type = "boolean", description = "Сохранить текущую версию в knowledge/.revisions/ перед записью (по умолчанию true)." }
+                },
+                required = new[] { "file_path", "content" }
+            })
+        },
+        new()
+        {
+            Name = "append_knowledge_file",
+            Description = "Добавить блок в конец файла в knowledge/ канона без перезаписи. Перед добавлением текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true).",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH." },
+                    file_path = new { type = "string", description = "Относительный путь внутри knowledge/." },
+                    content = new { type = "string", description = "Текст для добавления в конец файла (перед ним при необходимости добавляется перевод строки)." },
+                    save_revision = new { type = "boolean", description = "Сохранить текущую версию в knowledge/.revisions/ перед добавлением (по умолчанию true)." }
+                },
+                required = new[] { "file_path", "content" }
+            })
+        },
+        new()
+        {
+            Name = "upsert_knowledge_section",
+            Description = "Вставить или обновить секцию в файле knowledge/ по section_id (маркеры <!-- section:ID --> ... <!-- /section:ID -->). Перед изменением текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true).",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH." },
+                    file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например index-knowledge-router-v1.md." },
+                    section_id = new { type = "string", description = "Стабильный ID секции (A-Za-z0-9._-)." },
+                    content = new { type = "string", description = "Новое содержимое секции." },
+                    save_revision = new { type = "boolean", description = "Сохранить текущую версию в knowledge/.revisions/ перед изменением (по умолчанию true)." }
+                },
+                required = new[] { "file_path", "section_id", "content" }
+            })
+        },
+        new()
+        {
+            Name = "delete_knowledge_file",
+            Description = "Удалить файл из каталога knowledge/ канона. file_path — относительный путь (без '..'). Если файла нет — NO_CHANGES.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH." },
+                    file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например mcp-test-irl.md." }
+                },
+                required = new[] { "file_path" }
+            })
+        },
+        new()
+        {
+            Name = "delete_knowledge_section",
+            Description = "Удалить секцию из файла knowledge/ по section_id (блок между <!-- section:ID --> и <!-- /section:ID -->). Если секции нет — NO_CHANGES.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH." },
+                    file_path = new { type = "string", description = "Относительный путь внутри knowledge/." },
+                    section_id = new { type = "string", description = "ID секции для удаления (A-Za-z0-9._-)." }
+                },
+                required = new[] { "file_path", "section_id" }
+            })
+        },
+        new()
+        {
+            Name = "read_knowledge_file",
+            Description = "Прочитать файл из каталога knowledge/ канона. Путь к канону: canon_path или AGENT_NOTES_CANON_PATH. Возвращает содержимое или пустую строку, если файла нет.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH." },
+                    file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например kb-music-theory-fundamentals-v1.md." }
+                },
+                required = new[] { "file_path" }
+            })
+        },
+        new()
+        {
+            Name = "list_knowledge_files",
+            Description = "Список файлов в каталоге knowledge/ канона (без .revisions). Опционально subdir — подкаталог (например work для knowledge/work/). Возвращает path, size_bytes, modified_utc для каждого файла.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH." },
+                    subdir = new { type = "string", description = "Подкаталог внутри knowledge/ (пусто = весь knowledge/). Например work." }
+                },
+                required = Array.Empty<string>()
+            })
         }
     ];
 }

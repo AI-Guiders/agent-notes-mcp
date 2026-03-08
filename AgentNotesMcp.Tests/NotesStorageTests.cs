@@ -74,6 +74,110 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
+    public void Knowledge_WriteRead_WithExplicitCanonPath()
+    {
+        using var temp = TempCanon.Create();
+        var storage = new NotesStorage();
+        const string content = "# Test KB\n\nBody here.";
+
+        Assert.Equal("OK", storage.WriteKnowledgeFile(temp.CanonPath, "kb-test-v1.md", content));
+        Assert.Equal(content, storage.ReadKnowledgeFile(temp.CanonPath, "kb-test-v1.md"));
+        Assert.True(File.Exists(Path.Combine(temp.CanonPath, "knowledge", "kb-test-v1.md")));
+    }
+
+    [Fact]
+    public void Knowledge_Read_WhenFileMissing_ReturnsEmpty()
+    {
+        using var temp = TempCanon.Create();
+        var storage = new NotesStorage();
+        Assert.Equal("", storage.ReadKnowledgeFile(temp.CanonPath, "missing.md"));
+    }
+
+    [Fact]
+    public void Knowledge_Append_DoesNotOverwrite()
+    {
+        using var temp = TempCanon.Create();
+        var storage = new NotesStorage();
+        storage.WriteKnowledgeFile(temp.CanonPath, "append-test.md", "first");
+        Assert.Equal("OK", storage.AppendKnowledgeFile(temp.CanonPath, "append-test.md", "second"));
+        Assert.Equal("first\nsecond", storage.ReadKnowledgeFile(temp.CanonPath, "append-test.md"));
+    }
+
+    [Fact]
+    public void Knowledge_UpsertSection_InsertsThenUpdates()
+    {
+        using var temp = TempCanon.Create();
+        var storage = new NotesStorage();
+        storage.WriteKnowledgeFile(temp.CanonPath, "sections.md", "preamble\n");
+
+        Assert.Equal("OK", storage.UpsertKnowledgeSection(temp.CanonPath, "sections.md", "music-router", "load playbook-music-v1"));
+        var afterInsert = storage.ReadKnowledgeFile(temp.CanonPath, "sections.md");
+        Assert.Contains("<!-- section:music-router -->", afterInsert);
+        Assert.Contains("load playbook-music-v1", afterInsert);
+
+        Assert.Equal("OK", storage.UpsertKnowledgeSection(temp.CanonPath, "sections.md", "music-router", "load playbook-music-v1 and kb-*"));
+        var afterUpdate = storage.ReadKnowledgeFile(temp.CanonPath, "sections.md");
+        Assert.DoesNotContain("load playbook-music-v1\n", afterUpdate);
+        Assert.Contains("load playbook-music-v1 and kb-*", afterUpdate);
+        Assert.Equal(1, Count(afterUpdate, "<!-- section:music-router -->"));
+    }
+
+    [Fact]
+    public void Knowledge_DeleteSection_RemovesBlock_ReturnsNoChangesWhenMissing()
+    {
+        using var temp = TempCanon.Create();
+        var storage = new NotesStorage();
+        storage.WriteKnowledgeFile(temp.CanonPath, "del-section.md", "head\n\n<!-- section:to-remove -->\nbody\n<!-- /section:to-remove -->\n\ntail");
+        Assert.Equal("OK", storage.DeleteKnowledgeSection(temp.CanonPath, "del-section.md", "to-remove"));
+        var after = storage.ReadKnowledgeFile(temp.CanonPath, "del-section.md");
+        Assert.DoesNotContain("<!-- section:to-remove -->", after);
+        Assert.DoesNotContain("body", after);
+        Assert.Contains("head", after);
+        Assert.Contains("tail", after);
+        Assert.Equal("NO_CHANGES", storage.DeleteKnowledgeSection(temp.CanonPath, "del-section.md", "to-remove"));
+    }
+
+    [Fact]
+    public void Knowledge_DeleteFile_RemovesFile_ReturnsNoChangesWhenMissing()
+    {
+        using var temp = TempCanon.Create();
+        var storage = new NotesStorage();
+        storage.WriteKnowledgeFile(temp.CanonPath, "to-delete.md", "content");
+        Assert.True(File.Exists(Path.Combine(temp.CanonPath, "knowledge", "to-delete.md")));
+        Assert.Equal("OK", storage.DeleteKnowledgeFile(temp.CanonPath, "to-delete.md"));
+        Assert.False(File.Exists(Path.Combine(temp.CanonPath, "knowledge", "to-delete.md")));
+        Assert.Equal("NO_CHANGES", storage.DeleteKnowledgeFile(temp.CanonPath, "to-delete.md"));
+    }
+
+    [Fact]
+    public void Knowledge_Write_RejectsPathTraversal()
+    {
+        using var temp = TempCanon.Create();
+        var storage = new NotesStorage();
+        Assert.Throws<ArgumentException>(() =>
+            storage.WriteKnowledgeFile(temp.CanonPath, "../evil.md", "x"));
+    }
+
+    [Fact]
+    public void Knowledge_ResolveCanonPath_FromEnv_WhenCanonPathNull()
+    {
+        using var temp = TempCanon.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_CANON_PATH", temp.CanonPath);
+        var storage = new NotesStorage();
+        storage.WriteKnowledgeFile(null, "env-canon-test.md", "from env");
+        Assert.Equal("from env", storage.ReadKnowledgeFile(null, "env-canon-test.md"));
+    }
+
+    [Fact]
+    public void Knowledge_ResolveCanonPath_ThrowsWhenNeitherCanonPathNorEnvSet()
+    {
+        using var env = EnvVarScope.Clear("AGENT_NOTES_CANON_PATH");
+        var storage = new NotesStorage();
+        Assert.Throws<ArgumentException>(() =>
+            storage.WriteKnowledgeFile(null, "any.md", "x"));
+    }
+
+    [Fact]
     public void EndToEnd_WriteUpsertSearchRollback_WorksAndCleansState()
     {
         using var temp = TempWorkspace.Create();
@@ -239,6 +343,36 @@ public sealed class NotesStorageTests
         }
     }
 
+    private sealed class TempCanon : IDisposable
+    {
+        private TempCanon(string canonPath)
+        {
+            CanonPath = canonPath;
+        }
+
+        internal string CanonPath { get; }
+
+        internal static TempCanon Create()
+        {
+            var path = Path.Combine(Path.GetTempPath(), "AgentNotesMcpTests", "canon", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(path);
+            return new TempCanon(path);
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                if (Directory.Exists(CanonPath))
+                    Directory.Delete(CanonPath, recursive: true);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to cleanup test canon: {CanonPath}", ex);
+            }
+        }
+    }
+
     private sealed class EnvVarScope : IDisposable
     {
         private readonly string _name;
@@ -254,6 +388,13 @@ public sealed class NotesStorageTests
         {
             var previous = Environment.GetEnvironmentVariable(name);
             Environment.SetEnvironmentVariable(name, value);
+            return new EnvVarScope(name, previous);
+        }
+
+        internal static EnvVarScope Clear(string name)
+        {
+            var previous = Environment.GetEnvironmentVariable(name);
+            Environment.SetEnvironmentVariable(name, null);
             return new EnvVarScope(name, previous);
         }
 

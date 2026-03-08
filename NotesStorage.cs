@@ -9,6 +9,8 @@ internal sealed class NotesStorage
     private const string NotesFileName = "agent-notes.md";
     private const string EnvNotesFile = "AGENT_NOTES_FILE";
     private const string RevisionsDirName = ".revisions";
+    private const string KnowledgeDirName = "knowledge";
+    private const string EnvCanonPath = "AGENT_NOTES_CANON_PATH";
 
     private readonly object _sync = new();
     private static readonly Regex SectionRegex = new(
@@ -26,6 +28,164 @@ internal sealed class NotesStorage
             root = Path.GetDirectoryName(root) ?? root;
 
         return Path.Combine(root, NotesDirName, NotesFileName);
+    }
+
+    /// <summary>Resolve canon root: from argument or AGENT_NOTES_CANON_PATH. Used for knowledge/ reads and writes.</summary>
+    internal static string ResolveCanonPath(string? canonPath)
+    {
+        var root = !string.IsNullOrWhiteSpace(canonPath)
+            ? canonPath.Trim()
+            : Environment.GetEnvironmentVariable(EnvCanonPath);
+        if (string.IsNullOrWhiteSpace(root))
+            throw new ArgumentException("canon_path is required when AGENT_NOTES_CANON_PATH is not set.");
+        return Path.GetFullPath(root);
+    }
+
+    /// <summary>Validate relative path under knowledge/: no "..", no leading slash. Returns normalized relative path.</summary>
+    private static string ValidateKnowledgeRelativePath(string filePath)
+    {
+        var normalized = filePath.Replace('\\', '/').TrimStart('/');
+        if (normalized.Contains("..", StringComparison.Ordinal) || Path.IsPathRooted(normalized))
+            throw new ArgumentException("file_path must be a relative path under knowledge/ (no '..', no absolute path).");
+        if (string.IsNullOrWhiteSpace(normalized))
+            throw new ArgumentException("file_path is required.");
+        return normalized;
+    }
+
+    internal string GetKnowledgeFilePath(string? canonPath, string filePath)
+    {
+        var root = ResolveCanonPath(canonPath);
+        var relative = ValidateKnowledgeRelativePath(filePath);
+        return Path.Combine(root, KnowledgeDirName, relative);
+    }
+
+    internal string ReadKnowledgeFile(string? canonPath, string filePath)
+    {
+        var fullPath = GetKnowledgeFilePath(canonPath, filePath);
+        return File.Exists(fullPath) ? File.ReadAllText(fullPath, Encoding.UTF8) : "";
+    }
+
+    internal string ListKnowledgeFiles(string? canonPath, string? subdir)
+    {
+        var root = ResolveCanonPath(canonPath);
+        var knowledgeRoot = Path.Combine(root, KnowledgeDirName);
+        var searchDir = string.IsNullOrWhiteSpace(subdir)
+            ? knowledgeRoot
+            : Path.Combine(knowledgeRoot, ValidateKnowledgeRelativePath(subdir.Trim().Replace('\\', '/')));
+        if (!Directory.Exists(searchDir))
+            return JsonSerializer.Serialize(new { path = searchDir, files = Array.Empty<object>(), total = 0 }, JsonOptions);
+        var baseLen = knowledgeRoot.Length;
+        var files = Directory.GetFiles(searchDir, "*", SearchOption.AllDirectories)
+            .Where(p => !p.Contains(RevisionsDirName, StringComparison.Ordinal))
+            .Select(p =>
+            {
+                var rel = p.Substring(baseLen).TrimStart(Path.DirectorySeparatorChar).Replace('\\', '/');
+                var info = new FileInfo(p);
+                return new { path = rel, size_bytes = info.Length, modified_utc = info.LastWriteTimeUtc.ToString("O") };
+            })
+            .OrderBy(x => x.path, StringComparer.Ordinal)
+            .ToArray();
+        return JsonSerializer.Serialize(new { path = searchDir, files, total = files.Length }, JsonOptions);
+    }
+
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
+    internal string WriteKnowledgeFile(string? canonPath, string filePath, string content, bool saveRevision = true)
+    {
+        var fullPath = GetKnowledgeFilePath(canonPath, filePath);
+        if (saveRevision && File.Exists(fullPath))
+        {
+            var current = File.ReadAllText(fullPath, Encoding.UTF8);
+            WriteKnowledgeRevision(canonPath, filePath, current, "write");
+        }
+        var dir = Path.GetDirectoryName(fullPath);
+        if (!string.IsNullOrWhiteSpace(dir))
+            Directory.CreateDirectory(dir);
+        File.WriteAllText(fullPath, content, Encoding.UTF8);
+        return "OK";
+    }
+
+    private void WriteKnowledgeRevision(string? canonPath, string filePath, string snapshotContent, string reason)
+    {
+        var root = ResolveCanonPath(canonPath);
+        var revisionsDir = Path.Combine(root, KnowledgeDirName, RevisionsDirName);
+        Directory.CreateDirectory(revisionsDir);
+        var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss-fff");
+        var safeName = filePath.Replace('/', '-').Replace('\\', '-');
+        var revisionName = $"{timestamp}-{NormalizeReason(reason)}-{safeName}-{ComputeShortHash(snapshotContent)}.md";
+        var revisionPath = Path.Combine(revisionsDir, revisionName);
+        File.WriteAllText(revisionPath, snapshotContent, Encoding.UTF8);
+    }
+
+    internal string AppendKnowledgeFile(string? canonPath, string filePath, string content, bool saveRevision = true)
+    {
+        var fullPath = GetKnowledgeFilePath(canonPath, filePath);
+        var existing = File.Exists(fullPath) ? File.ReadAllText(fullPath, Encoding.UTF8) : "";
+        if (saveRevision && existing.Length > 0)
+            WriteKnowledgeRevision(canonPath, filePath, existing, "append");
+        var dir = Path.GetDirectoryName(fullPath);
+        if (!string.IsNullOrWhiteSpace(dir))
+            Directory.CreateDirectory(dir);
+        var separator = existing.Length > 0 && !existing.EndsWith('\n') ? "\n" : "";
+        File.WriteAllText(fullPath, existing + separator + content, Encoding.UTF8);
+        return "OK";
+    }
+
+    internal string UpsertKnowledgeSection(string? canonPath, string filePath, string sectionId, string content, bool saveRevision = true)
+    {
+        var fullPath = GetKnowledgeFilePath(canonPath, filePath);
+        var dir = Path.GetDirectoryName(fullPath);
+        if (!string.IsNullOrWhiteSpace(dir))
+            Directory.CreateDirectory(dir);
+        var existing = File.Exists(fullPath) ? File.ReadAllText(fullPath, Encoding.UTF8) : "";
+        if (saveRevision && existing.Length > 0)
+            WriteKnowledgeRevision(canonPath, filePath, existing, "upsert");
+        var startMarker = $"<!-- section:{sectionId} -->";
+        var endMarker = $"<!-- /section:{sectionId} -->";
+        var sectionBlock = $"{startMarker}\n{content}\n{endMarker}";
+        var start = existing.IndexOf(startMarker, StringComparison.Ordinal);
+        var end = start >= 0 ? existing.IndexOf(endMarker, start, StringComparison.Ordinal) : -1;
+        string next;
+        if (start >= 0 && end >= 0)
+        {
+            var before = existing[..start].TrimEnd('\r', '\n');
+            var after = existing[(end + endMarker.Length)..].TrimStart('\r', '\n');
+            next = JoinBlocks(before, sectionBlock, after);
+        }
+        else
+        {
+            next = JoinBlocks(existing, sectionBlock);
+        }
+        File.WriteAllText(fullPath, next, Encoding.UTF8);
+        return "OK";
+    }
+
+    internal string DeleteKnowledgeFile(string? canonPath, string filePath)
+    {
+        var fullPath = GetKnowledgeFilePath(canonPath, filePath);
+        if (!File.Exists(fullPath))
+            return "NO_CHANGES";
+        File.Delete(fullPath);
+        return "OK";
+    }
+
+    internal string DeleteKnowledgeSection(string? canonPath, string filePath, string sectionId)
+    {
+        var fullPath = GetKnowledgeFilePath(canonPath, filePath);
+        if (!File.Exists(fullPath))
+            return "NO_CHANGES";
+        var existing = File.ReadAllText(fullPath, Encoding.UTF8);
+        var startMarker = $"<!-- section:{sectionId} -->";
+        var endMarker = $"<!-- /section:{sectionId} -->";
+        var start = existing.IndexOf(startMarker, StringComparison.Ordinal);
+        var end = start >= 0 ? existing.IndexOf(endMarker, start, StringComparison.Ordinal) : -1;
+        if (start < 0 || end < 0)
+            return "NO_CHANGES";
+        var before = existing[..start].TrimEnd('\r', '\n');
+        var after = existing[(end + endMarker.Length)..].TrimStart('\r', '\n');
+        var next = JoinBlocks(before, after);
+        File.WriteAllText(fullPath, next, Encoding.UTF8);
+        return "OK";
     }
 
     internal string Read(string workspacePath)
@@ -578,7 +738,8 @@ internal sealed class NotesStorage
                     break;
                 if (t.StartsWith("- ", StringComparison.Ordinal))
                 {
-                    var id = t[2..].Trim();
+                    var rest = t[2..].Trim();
+                    var id = rest.Split([' ', '(', '\t'], 2, StringSplitOptions.None)[0].Trim();
                     if (id.Length > 0 && Regex.IsMatch(id, "^[A-Za-z0-9._-]+$"))
                         ids.Add(id);
                 }
