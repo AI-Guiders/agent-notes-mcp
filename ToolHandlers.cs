@@ -15,7 +15,12 @@ internal sealed class ToolHandlers
             "append_agent_notes" or
             "upsert_agent_notes_section" or
             "rollback_agent_notes" or
-            "compact_hot_context";
+            "compact_hot_context" or
+            "write_knowledge_file" or
+            "append_knowledge_file" or
+            "upsert_knowledge_section" or
+            "delete_knowledge_section" or
+            "delete_knowledge_file";
 
     internal string Handle(string toolName, IReadOnlyDictionary<string, JsonElement> args) =>
         toolName switch
@@ -32,6 +37,13 @@ internal sealed class ToolHandlers
             "search_agent_notes" => Search(args),
             "extract_from_archive" => ExtractFromArchive(args),
             "compact_hot_context" => CompactHotContext(args),
+            "write_knowledge_file" => WriteKnowledgeFile(args),
+            "append_knowledge_file" => AppendKnowledgeFile(args),
+            "upsert_knowledge_section" => UpsertKnowledgeSection(args),
+            "delete_knowledge_section" => DeleteKnowledgeSection(args),
+            "delete_knowledge_file" => DeleteKnowledgeFile(args),
+            "read_knowledge_file" => ReadKnowledgeFile(args),
+            "list_knowledge_files" => ListKnowledgeFiles(args),
             _ => throw new ArgumentException($"Unknown tool: {toolName}.")
         };
 
@@ -128,5 +140,66 @@ internal sealed class ToolHandlers
         var workspacePath = ToolArgs.RequiredString(args, "workspace_path");
         var apply = ToolArgs.GetBoolOrDefault(args, "apply", false);
         return _storage.CompactHotContext(workspacePath, apply);
+    }
+
+    private string WriteKnowledgeFile(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var canonPath = ToolArgs.OptionalString(args, "canon_path");
+        var filePath = ToolArgs.RequiredString(args, "file_path");
+        var content = ToolArgs.RequiredString(args, "content");
+        var saveRevision = ToolArgs.GetBoolOrDefault(args, "save_revision", true);
+        return _storage.WriteKnowledgeFile(canonPath, filePath, content, saveRevision);
+    }
+
+    private string AppendKnowledgeFile(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var canonPath = ToolArgs.OptionalString(args, "canon_path");
+        var filePath = ToolArgs.RequiredString(args, "file_path");
+        var content = ToolArgs.RequiredString(args, "content");
+        var saveRevision = ToolArgs.GetBoolOrDefault(args, "save_revision", true);
+        return _storage.AppendKnowledgeFile(canonPath, filePath, content, saveRevision);
+    }
+
+    private string UpsertKnowledgeSection(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var canonPath = ToolArgs.OptionalString(args, "canon_path");
+        var filePath = ToolArgs.RequiredString(args, "file_path");
+        var sectionId = ToolArgs.RequiredString(args, "section_id");
+        var content = ToolArgs.RequiredString(args, "content");
+        var saveRevision = ToolArgs.GetBoolOrDefault(args, "save_revision", true);
+        if (!ToolArgs.IsValidSectionId(sectionId))
+            throw new ArgumentException("section_id must match ^[A-Za-z0-9._-]+$.");
+        return _storage.UpsertKnowledgeSection(canonPath, filePath, sectionId, content, saveRevision);
+    }
+
+    private string DeleteKnowledgeSection(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var canonPath = ToolArgs.OptionalString(args, "canon_path");
+        var filePath = ToolArgs.RequiredString(args, "file_path");
+        var sectionId = ToolArgs.RequiredString(args, "section_id");
+        if (!ToolArgs.IsValidSectionId(sectionId))
+            throw new ArgumentException("section_id must match ^[A-Za-z0-9._-]+$.");
+        return _storage.DeleteKnowledgeSection(canonPath, filePath, sectionId);
+    }
+
+    private string DeleteKnowledgeFile(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var canonPath = ToolArgs.OptionalString(args, "canon_path");
+        var filePath = ToolArgs.RequiredString(args, "file_path");
+        return _storage.DeleteKnowledgeFile(canonPath, filePath);
+    }
+
+    private string ReadKnowledgeFile(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var canonPath = ToolArgs.OptionalString(args, "canon_path");
+        var filePath = ToolArgs.RequiredString(args, "file_path");
+        return _storage.ReadKnowledgeFile(canonPath, filePath);
+    }
+
+    private string ListKnowledgeFiles(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var canonPath = ToolArgs.OptionalString(args, "canon_path");
+        var subdir = ToolArgs.OptionalString(args, "subdir");
+        return _storage.ListKnowledgeFiles(canonPath, subdir);
     }
 }
