@@ -9,7 +9,7 @@ var tools = ToolCatalog.Build();
 
 var options = new McpServerOptions
 {
-    ServerInfo = new Implementation { Name = "AgentNotesMcp", Version = "0.5.0" },
+    ServerInfo = new Implementation { Name = "AgentNotesMcp", Version = "0.5.1" },
     ProtocolVersion = "2024-11-05",
     Capabilities = new ServerCapabilities
     {
