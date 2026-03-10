@@ -258,6 +258,56 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
+    public void ReadHotContext_LoadsL0FromManifest_WhenSpecified()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+
+        var notesRoot = Path.GetDirectoryName(temp.NotesFilePath)!;
+        var metaDir = Path.Combine(notesRoot, "knowledge", "META");
+        Directory.CreateDirectory(metaDir);
+
+        var manifestPath = Path.Combine(metaDir, "memory-architecture-v1.json");
+        File.WriteAllText(manifestPath, """
+            {
+              "l0": [
+                "custom-baseline-a",
+                "custom-baseline-b",
+                "active-scope",
+                "current-task"
+              ]
+            }
+            """);
+
+        var memoryArch = """
+            ## Memory Architecture v1
+            l0_manifest: knowledge/META/memory-architecture-v1.json
+            ### L0: Hot State (always load)
+            - THIS_SHOULD_BE_IGNORED
+            - active-scope
+            - current-task
+            """;
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "memory-architecture-v1", memoryArch));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "custom-baseline-a", "baseline A"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "custom-baseline-b", "baseline B"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: current-projects"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "current-task", "task"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "scope-current-projects", "scope body"));
+
+        var json = storage.ReadHotContext(temp.WorkspacePath, null);
+        using var doc = JsonDocument.Parse(json);
+        var loaded = doc.RootElement.GetProperty("loaded_sections");
+        var ids = new List<string>();
+        foreach (var e in loaded.EnumerateArray())
+            ids.Add(e.GetString() ?? "");
+
+        Assert.Contains("custom-baseline-a", ids);
+        Assert.Contains("custom-baseline-b", ids);
+        Assert.DoesNotContain("THIS_SHOULD_BE_IGNORED", ids);
+    }
+
+    [Fact]
     public void RouteContext_ReturnsRelevantSectionsAndAssembledContext()
     {
         using var temp = TempWorkspace.Create();

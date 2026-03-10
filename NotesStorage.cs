@@ -11,11 +11,15 @@ internal sealed class NotesStorage
     private const string RevisionsDirName = ".revisions";
     private const string KnowledgeDirName = "knowledge";
     private const string EnvCanonPath = "AGENT_NOTES_CANON_PATH";
+    private const string MemoryArchitectureManifestKey = "l0_manifest";
 
     private readonly object _sync = new();
     private static readonly Regex SectionRegex = new(
         @"<!--\s*section:(?<id>[A-Za-z0-9._-]+)\s*-->\s*(?<content>.*?)\s*<!--\s*/section:\k<id>\s*-->",
         RegexOptions.Singleline | RegexOptions.Compiled);
+    private static readonly Regex MemoryArchitectureManifestRegex = new(
+        @"(?m)^\s*l0_manifest\s*:\s*(?<path>\S+)\s*$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     internal string GetNotesPath(string workspacePath)
     {
@@ -325,7 +329,8 @@ internal sealed class NotesStorage
         var sections = ParseSections(notes);
         var resolvedScope = ResolveScope(activeScope, sections, workspacePath);
 
-        var l0 = ParseL0FromMemoryArchitecture(sections.GetValueOrDefault("memory-architecture-v1"));
+        var notesPath = GetNotesPath(workspacePath);
+        var l0 = ResolveL0Ids(sections, notesPath);
         var priorityIds = (l0 ?? DefaultL0Ids()).ToList();
         var scopeId = ResolveScopeSectionId(resolvedScope, sections);
         priorityIds.Add(scopeId);
@@ -359,7 +364,7 @@ internal sealed class NotesStorage
         var notes = Read(workspacePath);
         var sections = ParseSections(notes);
         var resolvedScope = ResolveScope(activeScope, sections, workspacePath);
-        var hotSectionIds = BuildHotSectionIds(resolvedScope, sections);
+        var hotSectionIds = BuildHotSectionIds(resolvedScope, sections, notesPath);
         var hotSections = hotSectionIds
             .Where(sections.ContainsKey)
             .Select(id => new
@@ -378,6 +383,7 @@ internal sealed class NotesStorage
 
         var warnings = new List<string>();
         var recommendCompaction = false;
+        warnings.AddRange(ValidateMemoryArchitecture(sections, notesPath));
 
         if (hotChars > 12000)
         {
@@ -461,7 +467,8 @@ internal sealed class NotesStorage
 
         var sections = ParseSections(notes);
         var resolvedScope = ResolveScope(activeScope, sections, workspacePath);
-        var hotSectionIds = BuildHotSectionIds(resolvedScope, sections);
+        var notesPath = GetNotesPath(workspacePath);
+        var hotSectionIds = BuildHotSectionIds(resolvedScope, sections, notesPath);
         var boosted = hotSectionIds
             .Select((id, idx) => (id, bonus: Math.Max(0, 30 - idx * 2)))
             .ToDictionary(x => x.id, x => x.bonus, StringComparer.Ordinal);
@@ -602,7 +609,7 @@ internal sealed class NotesStorage
     {
         var notesPath = GetNotesPath(workspacePath);
         var existing = File.Exists(notesPath) ? File.ReadAllText(notesPath, Encoding.UTF8) : "";
-        var compacted = CompactNotes(existing);
+        var compacted = CompactNotes(existing, notesPath);
 
         if (!apply)
         {
@@ -749,6 +756,112 @@ internal sealed class NotesStorage
         return ids.Count > 0 ? ids : null;
     }
 
+    private static string ResolveCanonRootFromNotesPath(string notesPath)
+    {
+        var dir = Path.GetDirectoryName(notesPath);
+        if (string.IsNullOrWhiteSpace(dir))
+            throw new ArgumentException("Invalid notes path.");
+        return dir;
+    }
+
+    private static string? TryParseManifestRelativePath(string? memoryArchitectureContent)
+    {
+        if (string.IsNullOrWhiteSpace(memoryArchitectureContent))
+            return null;
+        var match = MemoryArchitectureManifestRegex.Match(memoryArchitectureContent);
+        return match.Success ? match.Groups["path"].Value.Trim() : null;
+    }
+
+    private static string? TryResolveManifestFullPath(string notesPath, string? manifestPath)
+    {
+        if (string.IsNullOrWhiteSpace(manifestPath))
+            return null;
+        var p = manifestPath.Trim().Trim('"');
+        if (p.Length == 0)
+            return null;
+
+        var canonRoot = ResolveCanonRootFromNotesPath(notesPath);
+
+        if (p.StartsWith("knowledge/", StringComparison.OrdinalIgnoreCase) || p.StartsWith("knowledge\\", StringComparison.OrdinalIgnoreCase))
+            return Path.GetFullPath(Path.Combine(canonRoot, p));
+
+        if (p.StartsWith("./", StringComparison.Ordinal) || p.StartsWith(".\\", StringComparison.Ordinal))
+            return Path.GetFullPath(Path.Combine(canonRoot, p));
+
+        return Path.IsPathRooted(p) ? Path.GetFullPath(p) : Path.GetFullPath(Path.Combine(canonRoot, "knowledge", p));
+    }
+
+    private static (IReadOnlyList<string> l0, IReadOnlyList<string>? compactOrderSuffix)? TryLoadMemoryArchitectureManifest(string notesPath, string manifestPath)
+    {
+        var fullPath = TryResolveManifestFullPath(notesPath, manifestPath);
+        if (string.IsNullOrWhiteSpace(fullPath) || !File.Exists(fullPath))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(fullPath, Encoding.UTF8));
+            var root = doc.RootElement;
+
+            var l0 = new List<string>();
+            if (root.TryGetProperty("l0", out var l0El) && l0El.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in l0El.EnumerateArray())
+                {
+                    var id = item.ValueKind == JsonValueKind.String ? (item.GetString() ?? "").Trim() : "";
+                    if (id.Length == 0)
+                        continue;
+                    if (Regex.IsMatch(id, "^[A-Za-z0-9._-]+$"))
+                        l0.Add(id);
+                }
+            }
+
+            IReadOnlyList<string>? suffix = null;
+            if (root.TryGetProperty("compact_order_suffix", out var suffixEl) && suffixEl.ValueKind == JsonValueKind.Array)
+            {
+                var list = new List<string>();
+                foreach (var item in suffixEl.EnumerateArray())
+                {
+                    var id = item.ValueKind == JsonValueKind.String ? (item.GetString() ?? "").Trim() : "";
+                    if (id.Length == 0)
+                        continue;
+                    if (Regex.IsMatch(id, "^[A-Za-z0-9._-]+$"))
+                        list.Add(id);
+                }
+                suffix = list.Count > 0 ? list : null;
+            }
+
+            return l0.Count > 0 ? (l0, suffix) : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static IReadOnlyList<string>? ResolveL0Ids(IReadOnlyDictionary<string, string> sections, string notesPath)
+    {
+        var memoryArch = sections.GetValueOrDefault("memory-architecture-v1");
+        var manifestPath = TryParseManifestRelativePath(memoryArch);
+        if (!string.IsNullOrWhiteSpace(manifestPath))
+        {
+            var manifest = TryLoadMemoryArchitectureManifest(notesPath, manifestPath);
+            if (manifest is not null)
+                return manifest.Value.l0;
+        }
+
+        return ParseL0FromMemoryArchitecture(memoryArch);
+    }
+
+    private static IReadOnlyList<string>? ResolveCompactOrderSuffix(IReadOnlyDictionary<string, string> sections, string notesPath)
+    {
+        var memoryArch = sections.GetValueOrDefault("memory-architecture-v1");
+        var manifestPath = TryParseManifestRelativePath(memoryArch);
+        if (string.IsNullOrWhiteSpace(manifestPath))
+            return null;
+        var manifest = TryLoadMemoryArchitectureManifest(notesPath, manifestPath);
+        return manifest?.compactOrderSuffix;
+    }
+
     private static string[] DefaultL0Ids()
     {
         return
@@ -794,9 +907,9 @@ internal sealed class NotesStorage
             || sectionId.Equals("world-human-system-playbook-v1", StringComparison.Ordinal);
     }
 
-    private static string[] BuildHotSectionIds(string resolvedScope, IReadOnlyDictionary<string, string> sections)
+    private static string[] BuildHotSectionIds(string resolvedScope, IReadOnlyDictionary<string, string> sections, string notesPath)
     {
-        var l0 = ParseL0FromMemoryArchitecture(sections.GetValueOrDefault("memory-architecture-v1"));
+        var l0 = ResolveL0Ids(sections, notesPath);
         var ids = (l0 ?? DefaultL0Ids()).ToList();
         ids.Add(ResolveScopeSectionId(resolvedScope, sections));
         return ids.Where(id => !IsL1Excluded(id)).Distinct(StringComparer.Ordinal).ToArray();
@@ -943,15 +1056,17 @@ internal sealed class NotesStorage
         return workspacePath.Length > mapKeyPath.Length && workspacePath[mapKeyPath.Length] == '\\';
     }
 
-    private static string CompactNotes(string notes)
+    private static string CompactNotes(string notes, string notesPath)
     {
         var sections = ParseSections(notes);
         if (sections.Count == 0)
             return NormalizeWhitespace(notes);
 
-        var l0 = ParseL0FromMemoryArchitecture(sections.GetValueOrDefault("memory-architecture-v1"));
+        var l0 = ResolveL0Ids(sections, notesPath);
         var startIds = (l0 ?? DefaultL0Ids()).ToList();
-        var suffixIds = DefaultCompactOrderSuffix().Where(id => !startIds.Contains(id, StringComparer.Ordinal));
+        var manifestSuffix = ResolveCompactOrderSuffix(sections, notesPath);
+        var suffixSeed = manifestSuffix?.ToArray() ?? DefaultCompactOrderSuffix();
+        var suffixIds = suffixSeed.Where(id => !startIds.Contains(id, StringComparer.Ordinal));
         var preferredOrder = startIds.Concat(suffixIds).ToArray();
 
         var blocks = new List<string>();
@@ -970,6 +1085,42 @@ internal sealed class NotesStorage
         }
 
         return JoinBlocks(blocks.ToArray());
+    }
+
+    private static IReadOnlyList<string> ValidateMemoryArchitecture(IReadOnlyDictionary<string, string> sections, string notesPath)
+    {
+        var warnings = new List<string>();
+        var memoryArch = sections.GetValueOrDefault("memory-architecture-v1");
+        var manifestRel = TryParseManifestRelativePath(memoryArch);
+        if (string.IsNullOrWhiteSpace(manifestRel))
+            return warnings;
+
+        var fullPath = TryResolveManifestFullPath(notesPath, manifestRel);
+        if (string.IsNullOrWhiteSpace(fullPath) || !File.Exists(fullPath))
+        {
+            warnings.Add("memory_arch_manifest_missing");
+            return warnings;
+        }
+
+        var manifest = TryLoadMemoryArchitectureManifest(notesPath, manifestRel);
+        if (manifest is null)
+        {
+            warnings.Add("memory_arch_manifest_invalid_json");
+            return warnings;
+        }
+
+        var ids = manifest.Value.l0;
+        if (ids.Count == 0)
+        {
+            warnings.Add("memory_arch_manifest_l0_empty");
+            return warnings;
+        }
+
+        var missing = ids.Where(id => !sections.ContainsKey(id)).Take(8).ToArray();
+        if (missing.Length > 0)
+            warnings.Add("memory_arch_manifest_missing_sections:" + string.Join(",", missing));
+
+        return warnings;
     }
 
     private static string NormalizeWhitespace(string text)
