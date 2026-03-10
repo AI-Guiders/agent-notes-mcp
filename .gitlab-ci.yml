@@ -1,0 +1,3 @@
+# Runner не настроен (нет Docker/Linux). Релизы выкладываются с Windows скриптом:
+#   .\scripts\publish-release-win.ps1 -Version 2026.03.08 -CreateRelease
+# См. README, раздел «Релизы (без Runner)».

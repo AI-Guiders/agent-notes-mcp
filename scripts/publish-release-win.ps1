@@ -1,7 +1,13 @@
-# Publish win-x64 build to GitLab: Generic Package + optional GitLab Release.
-# Run from repo root on Windows. Required: GITLAB_URL, GITLAB_TOKEN.
+# Publish multi-platform builds to GitLab: Generic Package + optional GitLab Release with asset links.
+# Run from repo root on Windows (no Runner). Cross-compiles linux-x64, osx-x64 from Windows.
+#
+# Required env (or -GitLabUrl / -Token):
+#   GITLAB_URL, GITLAB_TOKEN (Personal Access Token, api)
+#
 # Usage:
+#   .\scripts\publish-release-win.ps1 -Version 0.5.1
 #   .\scripts\publish-release-win.ps1 -Version 0.5.1 -CreateRelease
+#   .\scripts\publish-release-win.ps1 -Version 0.5.1 -Rids win-x64,linux-x64
 
 param(
     [Parameter(Mandatory = $true)]
@@ -10,53 +16,69 @@ param(
     [string] $GitLabUrl,
     [string] $Token,
     [string] $ProjectPath = "Krawler/agent-notes-mcp",
-    [string] $Rid = "win-x64",
+    [string[]] $Rids = @("win-x64", "linux-x64", "osx-x64"),
     [switch] $CreateRelease
 )
 
 $ErrorActionPreference = "Stop"
 $baseUrl = if ($GitLabUrl) { $GitLabUrl.TrimEnd('/') } else { $env:GITLAB_URL?.TrimEnd('/') }
 $token  = if ($Token) { $Token } else { $env:GITLAB_TOKEN }
+$pkgName = "agent-notes-mcp"
 if (-not $baseUrl -or -not $token) { throw "Set GITLAB_URL and GITLAB_TOKEN (or pass -GitLabUrl and -Token)." }
-
 $projectId = $ProjectPath -replace '/', '%2F'
 $api = "$baseUrl/api/v4"
-$pkgName = "agent-notes-mcp"
+$zipPaths = @()
 
-$zipName = "agent-notes-mcp-$Rid.zip"
-$outDir = "publish-release-temp-$Rid"
-if (Test-Path $outDir) { Remove-Item -Recurse -Force $outDir }
+foreach ($rid in $Rids) {
+    $zipName = "agent-notes-mcp-$rid.zip"
+    $outDir = "publish-release-temp-$rid"
+    if (Test-Path $outDir) { Remove-Item -Recurse -Force $outDir }
 
-Write-Host "Building $Rid ..."
-dotnet publish -c Release -r $Rid -o $outDir
-if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed for $Rid" }
+    Write-Host "Building $rid ..."
+    dotnet publish -c Release -r $rid -o $outDir
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "dotnet publish -r $rid failed; skipping."
+        continue
+    }
 
-$zipPath = Join-Path $PWD $zipName
-if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
-Compress-Archive -Path "$outDir\\*" -DestinationPath $zipPath
-Remove-Item -Recurse -Force $outDir
-Write-Host "  -> $zipName"
+    $zipPath = Join-Path $PWD $zipName
+    if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
+    Compress-Archive -Path "$outDir\*" -DestinationPath $zipPath
+    Remove-Item -Recurse -Force $outDir
+    $zipPaths += @{ Name = $zipName; Path = $zipPath }
+    Write-Host "  -> $zipName"
+}
 
-$uploadUrl = "$api/projects/$projectId/packages/generic/$pkgName/$Version/$zipName"
-Write-Host "Uploading $zipName ..."
-Invoke-RestMethod -Uri $uploadUrl -Method Put -InFile $zipPath -Headers @{ "PRIVATE-TOKEN" = $token } -ContentType "application/octet-stream"
+if ($zipPaths.Count -eq 0) { Write-Error "No builds succeeded." }
+
+foreach ($z in $zipPaths) {
+    $uploadUrl = "$api/projects/$projectId/packages/generic/$pkgName/$Version/$($z.Name)"
+    Write-Host "Uploading $($z.Name) ..."
+    Invoke-RestMethod -Uri $uploadUrl -Method Put -InFile $z.Path -Headers @{ "PRIVATE-TOKEN" = $token } -ContentType "application/octet-stream"
+}
 
 if ($CreateRelease) {
     $commitSha = (git rev-parse HEAD).Trim()
-    $body = @{ tag_name = $Tag; ref = $commitSha; name = "Release $Tag"; description = "Pre-built: $Rid (no Runner)." } | ConvertTo-Json
+    $body = @{
+        tag_name     = $Tag
+        ref          = $commitSha
+        name         = "Release $Tag"
+        description  = "Pre-built: $($Rids -join ', ') (no Runner)."
+    } | ConvertTo-Json
     Invoke-RestMethod -Uri "$api/projects/$projectId/releases" -Method Post -Headers @{ "PRIVATE-TOKEN" = $token } -Body $body -ContentType "application/json"
     Write-Host "Release $Tag created."
+}
 
-    $assetUrl = "$api/projects/$projectId/packages/generic/$pkgName/$Version/$zipName"
-    $linkBody = @{ name = $zipName; url = $assetUrl; link_type = "package" } | ConvertTo-Json
+foreach ($z in $zipPaths) {
+    $assetUrl = "$api/projects/$projectId/packages/generic/$pkgName/$Version/$($z.Name)"
+    $linkBody = @{ name = $z.Name; url = $assetUrl; link_type = "package" } | ConvertTo-Json
     try {
         Invoke-RestMethod -Uri "$api/projects/$projectId/releases/$Tag/assets/links" -Method Post -Headers @{ "PRIVATE-TOKEN" = $token } -Body $linkBody -ContentType "application/json; charset=utf-8"
-        Write-Host "Asset link added: $zipName"
+        Write-Host "Asset link added: $($z.Name)"
     } catch {
-        Write-Warning "Could not add asset link for $zipName: $_"
+        Write-Warning "Could not add asset link for $($z.Name): $_"
     }
 }
 
-Remove-Item -Force $zipPath -ErrorAction SilentlyContinue
+foreach ($z in $zipPaths) { Remove-Item -Force $z.Path -ErrorAction SilentlyContinue }
 Write-Host "Done."
-

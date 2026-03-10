@@ -43,6 +43,21 @@ dotnet publish -c Release -o publish
 
 Рекомендуется junction: например `D:\agent-notes-mcp` → каталог `publish`; в Cursor в mcp.json указать `command`: `D:\agent-notes-mcp\AgentNotesMcp.exe`, `args`: `[]`.
 
+### Релизы (без Runner)
+
+GitLab Runner не используется (нет Docker/Linux). Скрипт собирает с Windows релизы для **win-x64**, **linux-x64** и **osx-x64** (кросс-компиляция) и кладёт в Generic Package по одному zip на платформу.
+
+1. Задай переменные: `GITLAB_URL` (например `http://193.124.113.7`), `GITLAB_TOKEN` (Personal Access Token с api).
+2. Из корня репо:
+   - залить артефакты в **существующий** релиз:  
+     `.\scripts\publish-release-win.ps1 -Version 2026.03.08`
+   - создать релиз от текущего коммита и привязать все zip:  
+     `.\scripts\publish-release-win.ps1 -Version 2026.03.08 -CreateRelease`
+   - только часть платформ (например без macOS):  
+     `.\scripts\publish-release-win.ps1 -Version 2026.03.08 -Rids win-x64,linux-x64 -CreateRelease`
+
+По умолчанию собираются все три платформы; при ошибке сборки одной остальные всё равно заливаются.
+
 ## Тулы
 
 | Имя | Описание | Аргументы |
