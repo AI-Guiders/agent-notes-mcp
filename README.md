@@ -26,6 +26,7 @@ MLP-v1 в этом репозитории:
 - health-check памяти (`memory_health`);
 - router-first контекст-пакет по запросу (`route_context`);
 - контракт `KB v2` для эксплуатационного режима (`KB-V2-CONTRACT.md`).
+- контракт совместного действия агентов и людей (`coexistence-framework-v1.md`).
 
 Новые возможности v0.5.0:
 
@@ -43,9 +44,15 @@ dotnet publish -c Release -o publish
 
 Рекомендуется junction: например `D:\agent-notes-mcp` → каталог `publish`; в Cursor в mcp.json указать `command`: `D:\agent-notes-mcp\AgentNotesMcp.exe`, `args`: `[]`.
 
-### Релизы (без Runner)
+### Релиз Ubuntu 25.10 (GitLab CI)
 
-GitLab Runner не используется (нет Docker/Linux). Скрипт собирает с Windows релизы для **win-x64**, **linux-x64** и **osx-x64** (кросс-компиляция) и кладёт в Generic Package по одному zip на платформу.
+Для **linux-x64** есть пайплайн на образе **ubuntu:25.10**: при push **тега** вида `v2026.03.22-ubuntu2510` job собирает self-contained zip и job **release** создаёт [GitLab Release](http://193.124.113.7/Krawler/agent-notes-mcp/-/releases) с прикреплённым `agent-notes-mcp-linux-x64.zip`.
+
+На `main` без тега этот пайплайн не запускается (только по тегу `v*`).
+
+### Релизы с Windows (без Runner / кросс-компиляция)
+
+Скрипт собирает с Windows релизы для **win-x64**, **linux-x64** и **osx-x64** и кладёт в Generic Package по одному zip на платформу.
 
 1. Задай переменные: `GITLAB_URL` (например `http://193.124.113.7`), `GITLAB_TOKEN` (Personal Access Token с api).
 2. Из корня репо:

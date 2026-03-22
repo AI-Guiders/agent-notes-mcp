@@ -1,6 +1,8 @@
 bin/
 obj/
 publish/
+publish-linux-test/
+publish-release-temp-*/
 agent-notes-mcp-publish/
 .vs/
 *.user

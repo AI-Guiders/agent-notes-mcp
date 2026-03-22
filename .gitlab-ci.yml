@@ -1,3 +1,56 @@
-# Runner не настроен (нет Docker/Linux). Релизы выкладываются с Windows скриптом:
-#   .\scripts\publish-release-win.ps1 -Version 2026.03.08 -CreateRelease
-# См. README, раздел «Релизы (без Runner)».
+# Релиз linux-x64 на образе Ubuntu 25.10 (Questing). Запуск: push тега v* (например v2026.03.22-ubuntu2510).
+# Windows/macOS по-прежнему: scripts/publish-release-win.ps1
+
+stages:
+  - build
+  - release
+
+variables:
+  ZIP_NAME: agent-notes-mcp-linux-x64.zip
+
+build-linux-ubuntu2510:
+  stage: build
+  image: ubuntu:25.10
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]/
+  before_script:
+    - apt-get update -qq
+    - DEBIAN_FRONTEND=noninteractive apt-get install -y -qq wget ca-certificates zip zlib1g libicu-dev
+    - wget -qO /tmp/dotnet-install.sh https://dot.net/v1/dotnet-install.sh
+    - bash /tmp/dotnet-install.sh --channel 10.0 --install /usr/share/dotnet
+    - export PATH="/usr/share/dotnet:$PATH"
+    - dotnet --version
+  script:
+    - export PATH="/usr/share/dotnet:$PATH"
+    - dotnet publish AgentNotesMcp.csproj -c Release -r linux-x64 --self-contained true -o publish-out
+    - cd publish-out && zip -r "../$ZIP_NAME" . && cd ..
+    - ls -la "$ZIP_NAME"
+  artifacts:
+    name: "$ZIP_NAME"
+    paths:
+      - $ZIP_NAME
+    expire_in: never
+
+create-release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - job: build-linux-ubuntu2510
+      artifacts: true
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]/
+  script:
+    - echo "Creating GitLab Release for $CI_COMMIT_TAG"
+  release:
+    tag_name: "$CI_COMMIT_TAG"
+    name: "agent-notes-mcp $CI_COMMIT_TAG — Ubuntu 25.10 / linux-x64"
+    description: |
+      Self-contained **linux-x64**, .NET 10. Сборка в CI на образе **ubuntu:25.10** (целевая среда: Ubuntu 25.10 amd64).
+
+      **Cursor / MCP:** распакуй архив и укажи абсолютный путь к бинарнику `AgentNotesMcp` в `mcp.json` (`command`, `args`: `[]`).
+
+      Сборки **win-x64** / **osx-x64** — скрипт `scripts/publish-release-win.ps1` (Generic Package + опционально Release).
+    assets:
+      links:
+        - name: agent-notes-mcp-linux-x64.zip
+          filepath: agent-notes-mcp-linux-x64.zip
