@@ -17,11 +17,14 @@ param(
     [string] $Token,
     [string] $ProjectPath = "Krawler/agent-notes-mcp",
     [string[]] $Rids = @("win-x64", "linux-x64", "osx-x64"),
+    [string] $ReleaseDescription = "",
     [switch] $CreateRelease
 )
 
 $ErrorActionPreference = "Stop"
-$baseUrl = if ($GitLabUrl) { $GitLabUrl.TrimEnd('/') } else { $env:GITLAB_URL?.TrimEnd('/') }
+$baseUrl = if ($GitLabUrl) { $GitLabUrl.TrimEnd('/') }
+    elseif ($env:GITLAB_URL) { $env:GITLAB_URL.TrimEnd('/') }
+    else { $null }
 $token  = if ($Token) { $Token } else { $env:GITLAB_TOKEN }
 $pkgName = "agent-notes-mcp"
 if (-not $baseUrl -or -not $token) { throw "Set GITLAB_URL and GITLAB_TOKEN (or pass -GitLabUrl and -Token)." }
@@ -59,11 +62,12 @@ foreach ($z in $zipPaths) {
 
 if ($CreateRelease) {
     $commitSha = (git rev-parse HEAD).Trim()
+    $desc = if ($ReleaseDescription) { $ReleaseDescription } else { "Pre-built: $($Rids -join ', ') (no Runner)." }
     $body = @{
         tag_name     = $Tag
         ref          = $commitSha
         name         = "Release $Tag"
-        description  = "Pre-built: $($Rids -join ', ') (no Runner)."
+        description  = $desc
     } | ConvertTo-Json
     Invoke-RestMethod -Uri "$api/projects/$projectId/releases" -Method Post -Headers @{ "PRIVATE-TOKEN" = $token } -Body $body -ContentType "application/json"
     Write-Host "Release $Tag created."
