@@ -11,7 +11,7 @@ internal static class ToolCatalog
         new()
         {
             Name = "memory_health",
-            Description = "Быстрый health-check памяти: размер hot-context, обязательные секции, предупреждения по бюджету и рекомендации по compaction.",
+            Description = "Быстрый health-check памяти: размер hot-context, обязательные секции, предупреждения по бюджету и рекомендации по compaction. Резолв scope: active_scope (если передан) → workspace-scope-map-v1 (по workspace_path) → active-scope.current → fallback current-projects.",
             InputSchema = Schema(new
             {
                 type = "object",
@@ -26,7 +26,7 @@ internal static class ToolCatalog
         new()
         {
             Name = "route_context",
-            Description = "Подобрать релевантные секции из agent-notes по запросу и собрать компактный context-пакет (router-first).",
+            Description = "Подобрать релевантные секции из agent-notes по запросу и собрать компактный context-пакет (router-first). Резолв scope: active_scope (если передан) → workspace-scope-map-v1 (по workspace_path) → active-scope.current → fallback current-projects.",
             InputSchema = Schema(new
             {
                 type = "object",
@@ -88,7 +88,7 @@ internal static class ToolCatalog
         new()
         {
             Name = "read_hot_context",
-            Description = "Прочитать только горячий контекст (L0/L1) без загрузки архивного хвоста. По active_scope выбирает соответствующий scope-срез.",
+            Description = "Прочитать только горячий контекст (L0/L1) без загрузки архивного хвоста. Резолв scope: active_scope (если передан) → workspace-scope-map-v1 (по workspace_path) → active-scope.current → fallback current-projects.",
             InputSchema = Schema(new
             {
                 type = "object",
