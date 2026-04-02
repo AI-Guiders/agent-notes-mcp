@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AgentNotes.Core;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 
