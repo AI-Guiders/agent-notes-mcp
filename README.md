@@ -38,8 +38,10 @@ MLP-v1 в этом репозитории:
 
 ## Публикация
 
+Публиковать **только** основной проект (в solution `AgentNotesMcp.slnx` ещё тесты — иначе `dotnet publish` на `.slnx` может смешать вывод тестового проекта с `publish/`).
+
 ```bash
-dotnet publish -c Release -o publish
+dotnet publish AgentNotesMcp.csproj -c Release -o publish
 ```
 
 Рекомендуется junction: например `D:\agent-notes-mcp` → каталог `publish`; в Cursor в mcp.json указать `command`: `D:\agent-notes-mcp\AgentNotesMcp.exe`, `args`: `[]`.
