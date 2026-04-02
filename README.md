@@ -79,26 +79,9 @@ dotnet publish AgentNotesMcp.csproj -c Release -o publish -r win-x64 --self-cont
 
 ## Тулы
 
-| Имя | Описание | Аргументы |
-| ----- | ---------- | ---------- |
-| `read_agent_notes` | Прочитать заметки. | `workspace_path` |
-| `memory_health` | Быстрый health-check памяти: размер hot-context, обязательные секции, предупреждения по бюджету и рекомендации по compaction. | `workspace_path`, `active_scope?` |
-| `route_context` | Подобрать релевантные секции **только из agent-notes.md** и вернуть assembled context. Файлы `knowledge/` не индексируются — playbook/kb читать через `read_knowledge_file`. **Резолв scope:** `active_scope` (если передан) → `workspace-scope-map-v1` (по `workspace_path`) → `active-scope.current` → fallback `current-projects`. | `workspace_path`, `query`, `active_scope?`, `max_sections?`, `max_chars?` |
-| `read_hot_context` | Прочитать только горячий контекст L0/L1 (без архивного хвоста). Список L0 (always load) **читается из секции `memory-architecture-v1`** (блок «### L0: Hot State» — буллеты `- section-id` до следующего `###`); при отсутствии или пустом разборе используется встроенный fallback. Затем добавляется секция scope из L1. **Резолв scope:** `active_scope` (если передан) → `workspace-scope-map-v1` (по `workspace_path`) → `active-scope.current` → fallback `current-projects`. | `workspace_path`, `active_scope?` |
-| `write_agent_notes` | Записать заметки (**полная замена** файла). Перед заменой текущая версия сохраняется в ревизии. | `workspace_path`, `content` |
-| `append_agent_notes` | Добавить блок в конец без полной перезаписи. Перед изменением создаётся ревизия. | `workspace_path`, `content` |
-| `upsert_agent_notes_section` | Вставить/обновить секцию по `section_id` (через маркеры HTML-комментариев). | `workspace_path`, `section_id`, `content` |
-| `search_agent_notes` | Поиск по заметкам (case-insensitive), возвращает строки и номера строк. | `workspace_path`, `query`, `head_limit?` |
-| `extract_from_archive` | Поиск по конкретной/последней ревизии с контекстом строк. | `workspace_path`, `query`, `revision_file?`, `head_limit?`, `context_lines?` |
-| `compact_hot_context` | Удалить дубли секций и нормализовать структуру hot-context (preview/apply). | `workspace_path`, `apply?` |
-| `list_agent_notes_revisions` | Список доступных ревизий для отката. | `workspace_path`, `limit?` |
-| `rollback_agent_notes` | Откатить заметки к выбранной (или последней) ревизии. | `workspace_path`, `revision_file?` |
-| `write_knowledge_file` | Записать файл в **knowledge/** канона (полная замена). Для добавления блока — `append_knowledge_file`; для точечного обновления секции — `upsert_knowledge_section`. | `file_path`, `content`, `canon_path?` |
-| `append_knowledge_file` | Добавить блок в конец файла в **knowledge/** без перезаписи. Безопасно: существующее содержимое сохраняется. | `file_path`, `content`, `canon_path?` |
-| `upsert_knowledge_section` | Вставить/обновить секцию в файле **knowledge/** по `section_id` (маркеры `<!-- section:ID -->` … `<!-- /section:ID -->`). Точечное изменение. | `file_path`, `section_id`, `content`, `canon_path?` |
-| `delete_knowledge_section` | Удалить секцию из файла **knowledge/** по `section_id`. Если секции нет — `NO_CHANGES`. | `file_path`, `section_id`, `canon_path?` |
-| `delete_knowledge_file` | Удалить файл из **knowledge/** канона. Если файла нет — `NO_CHANGES`. | `file_path`, `canon_path?` |
-| `read_knowledge_file` | Прочитать файл из **knowledge/** канона. | `file_path`, `canon_path?` |
+Полный перечень имён и описаний (как у инструментов в MCP) — **[docs/MCP-TOOLS.md](docs/MCP-TOOLS.md)**. Тот же источник даёт `mcp-tools.manifest.json` в корне проекта. Обновить оба файла из кода:
+
+`dotnet run --project tools/ExportMcpManifest -- --write` (рабочий каталог — корень `agent-notes-mcp`).
 
 `workspace_path` — каталог workspace (корень проекта в Cursor).  
 Файл: `workspace_path/.cascade-ide/agent-notes.md` (**если не задана** переменная окружения `AGENT_NOTES_FILE`).  

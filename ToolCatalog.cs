@@ -2,6 +2,7 @@ using System.Text.Json;
 using ModelContextProtocol.Protocol;
 using Tool = ModelContextProtocol.Protocol.Tool;
 
+/// <summary>Каталог MCP-тулов. Согласован с <c>mcp-tools.manifest.json</c> и <c>docs/MCP-TOOLS.md</c> (генерация: <c>tools/ExportMcpManifest</c>, тесты <c>McpToolManifestTests</c>, <c>McpToolsDocTests</c>).</summary>
 internal static class ToolCatalog
 {
     private static JsonElement Schema(object schema) => JsonSerializer.SerializeToElement(schema);
