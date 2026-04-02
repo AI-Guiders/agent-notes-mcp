@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using System.Text.Json;
+using AgentNotes.Core;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 

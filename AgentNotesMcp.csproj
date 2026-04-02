@@ -17,8 +17,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\agent-notes-core\AgentNotes.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="AgentNotesMcp.Tests\**\*.cs" />
     <None Remove="AgentNotesMcp.Tests\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="NotesStorage.cs" />
   </ItemGroup>
 
   <ItemGroup>

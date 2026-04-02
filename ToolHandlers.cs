@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AgentNotes.Core;
 
 internal sealed class ToolHandlers
 {

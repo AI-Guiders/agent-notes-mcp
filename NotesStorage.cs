@@ -3,7 +3,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-internal sealed class NotesStorage
+namespace AgentNotes.Core;
+
+public sealed class NotesStorage
 {
     private const string NotesDirName = ".cascade-ide";
     private const string NotesFileName = "agent-notes.md";
@@ -21,7 +23,7 @@ internal sealed class NotesStorage
         @"(?m)^\s*l0_manifest\s*:\s*(?<path>\S+)\s*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    internal string GetNotesPath(string workspacePath)
+    public string GetNotesPath(string workspacePath)
     {
         var globalPath = Environment.GetEnvironmentVariable(EnvNotesFile);
         if (!string.IsNullOrWhiteSpace(globalPath))
@@ -35,7 +37,7 @@ internal sealed class NotesStorage
     }
 
     /// <summary>Resolve canon root: from argument or AGENT_NOTES_CANON_PATH. Used for knowledge/ reads and writes.</summary>
-    internal static string ResolveCanonPath(string? canonPath)
+    public static string ResolveCanonPath(string? canonPath)
     {
         var root = !string.IsNullOrWhiteSpace(canonPath)
             ? canonPath.Trim()
@@ -56,20 +58,20 @@ internal sealed class NotesStorage
         return normalized;
     }
 
-    internal string GetKnowledgeFilePath(string? canonPath, string filePath)
+    public string GetKnowledgeFilePath(string? canonPath, string filePath)
     {
         var root = ResolveCanonPath(canonPath);
         var relative = ValidateKnowledgeRelativePath(filePath);
         return Path.Combine(root, KnowledgeDirName, relative);
     }
 
-    internal string ReadKnowledgeFile(string? canonPath, string filePath)
+    public string ReadKnowledgeFile(string? canonPath, string filePath)
     {
         var fullPath = GetKnowledgeFilePath(canonPath, filePath);
         return File.Exists(fullPath) ? File.ReadAllText(fullPath, Encoding.UTF8) : "";
     }
 
-    internal string ListKnowledgeFiles(string? canonPath, string? subdir)
+    public string ListKnowledgeFiles(string? canonPath, string? subdir)
     {
         var root = ResolveCanonPath(canonPath);
         var knowledgeRoot = Path.Combine(root, KnowledgeDirName);
@@ -94,7 +96,7 @@ internal sealed class NotesStorage
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    internal string WriteKnowledgeFile(string? canonPath, string filePath, string content, bool saveRevision = true)
+    public string WriteKnowledgeFile(string? canonPath, string filePath, string content, bool saveRevision = true)
     {
         var fullPath = GetKnowledgeFilePath(canonPath, filePath);
         if (saveRevision && File.Exists(fullPath))
@@ -121,7 +123,7 @@ internal sealed class NotesStorage
         File.WriteAllText(revisionPath, snapshotContent, Encoding.UTF8);
     }
 
-    internal string AppendKnowledgeFile(string? canonPath, string filePath, string content, bool saveRevision = true)
+    public string AppendKnowledgeFile(string? canonPath, string filePath, string content, bool saveRevision = true)
     {
         var fullPath = GetKnowledgeFilePath(canonPath, filePath);
         var existing = File.Exists(fullPath) ? File.ReadAllText(fullPath, Encoding.UTF8) : "";
@@ -135,7 +137,7 @@ internal sealed class NotesStorage
         return "OK";
     }
 
-    internal string UpsertKnowledgeSection(string? canonPath, string filePath, string sectionId, string content, bool saveRevision = true)
+    public string UpsertKnowledgeSection(string? canonPath, string filePath, string sectionId, string content, bool saveRevision = true)
     {
         var fullPath = GetKnowledgeFilePath(canonPath, filePath);
         var dir = Path.GetDirectoryName(fullPath);
@@ -164,7 +166,7 @@ internal sealed class NotesStorage
         return "OK";
     }
 
-    internal string DeleteKnowledgeFile(string? canonPath, string filePath)
+    public string DeleteKnowledgeFile(string? canonPath, string filePath)
     {
         var fullPath = GetKnowledgeFilePath(canonPath, filePath);
         if (!File.Exists(fullPath))
@@ -173,7 +175,7 @@ internal sealed class NotesStorage
         return "OK";
     }
 
-    internal string DeleteKnowledgeSection(string? canonPath, string filePath, string sectionId)
+    public string DeleteKnowledgeSection(string? canonPath, string filePath, string sectionId)
     {
         var fullPath = GetKnowledgeFilePath(canonPath, filePath);
         if (!File.Exists(fullPath))
@@ -192,16 +194,16 @@ internal sealed class NotesStorage
         return "OK";
     }
 
-    internal string Read(string workspacePath)
+    public string Read(string workspacePath)
     {
         var filePath = GetNotesPath(workspacePath);
         return File.Exists(filePath) ? File.ReadAllText(filePath, Encoding.UTF8) : "";
     }
 
-    internal string Write(string workspacePath, string content) =>
+    public string Write(string workspacePath, string content) =>
         SaveWithRevision(GetNotesPath(workspacePath), content, "write");
 
-    internal string Append(string workspacePath, string contentToAppend)
+    public string Append(string workspacePath, string contentToAppend)
     {
         var notesPath = GetNotesPath(workspacePath);
         var existing = File.Exists(notesPath) ? File.ReadAllText(notesPath, Encoding.UTF8) : "";
@@ -209,7 +211,7 @@ internal sealed class NotesStorage
         return SaveWithRevision(notesPath, existing + separator + contentToAppend, "append");
     }
 
-    internal string UpsertSection(string workspacePath, string sectionId, string content)
+    public string UpsertSection(string workspacePath, string sectionId, string content)
     {
         var notesPath = GetNotesPath(workspacePath);
         var existing = File.Exists(notesPath) ? File.ReadAllText(notesPath, Encoding.UTF8) : "";
@@ -236,7 +238,7 @@ internal sealed class NotesStorage
         return SaveWithRevision(notesPath, next, $"upsert-{sectionId}");
     }
 
-    internal string ListRevisions(string workspacePath, int limit)
+    public string ListRevisions(string workspacePath, int limit)
     {
         var notesPath = GetNotesPath(workspacePath);
         var revisionsDir = GetRevisionsDir(notesPath);
@@ -261,7 +263,7 @@ internal sealed class NotesStorage
         return JsonSerializer.Serialize(revisions, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    internal string Rollback(string workspacePath, string? revisionFile)
+    public string Rollback(string workspacePath, string? revisionFile)
     {
         var notesPath = GetNotesPath(workspacePath);
         var revisionsDir = GetRevisionsDir(notesPath);
@@ -286,7 +288,7 @@ internal sealed class NotesStorage
         return result == "NO_CHANGES" ? $"NO_CHANGES ({resolvedRevisionFile})" : $"OK ({resolvedRevisionFile})";
     }
 
-    internal string Search(string workspacePath, string query, int limit)
+    public string Search(string workspacePath, string query, int limit)
     {
         var notes = Read(workspacePath);
         var lines = notes.Replace("\r\n", "\n").Split('\n');
@@ -320,7 +322,7 @@ internal sealed class NotesStorage
         return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    internal string ReadHotContext(string workspacePath, string? activeScope)
+    public string ReadHotContext(string workspacePath, string? activeScope)
     {
         var notes = Read(workspacePath);
         if (string.IsNullOrWhiteSpace(notes))
@@ -358,7 +360,7 @@ internal sealed class NotesStorage
         return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    internal string MemoryHealth(string workspacePath, string? activeScope)
+    public string MemoryHealth(string workspacePath, string? activeScope)
     {
         var notesPath = GetNotesPath(workspacePath);
         var notes = Read(workspacePath);
@@ -449,7 +451,7 @@ internal sealed class NotesStorage
         return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    internal string RouteContext(
+    public string RouteContext(
         string workspacePath,
         string query,
         string? activeScope,
@@ -539,7 +541,7 @@ internal sealed class NotesStorage
         return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    internal string ExtractFromArchive(string workspacePath, string query, string? revisionFile, int limit, int contextLines)
+    public string ExtractFromArchive(string workspacePath, string query, string? revisionFile, int limit, int contextLines)
     {
         var notesPath = GetNotesPath(workspacePath);
         var revisionsDir = GetRevisionsDir(notesPath);
@@ -605,7 +607,7 @@ internal sealed class NotesStorage
         return JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    internal string CompactHotContext(string workspacePath, bool apply)
+    public string CompactHotContext(string workspacePath, bool apply)
     {
         var notesPath = GetNotesPath(workspacePath);
         var existing = File.Exists(notesPath) ? File.ReadAllText(notesPath, Encoding.UTF8) : "";
