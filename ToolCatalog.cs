@@ -26,7 +26,7 @@ internal static class ToolCatalog
         new()
         {
             Name = "route_context",
-            Description = "Подобрать релевантные секции из agent-notes по запросу и собрать компактный context-пакет (router-first). Резолв scope: active_scope (если передан) → workspace-scope-map-v1 (по workspace_path) → active-scope.current → fallback current-projects.",
+            Description = "Подобрать релевантные секции из agent-notes.md по запросу и собрать компактный context-пакет (router-first). Не индексирует файлы knowledge/ — длинные playbook/kb подгружать отдельно через read_knowledge_file (напр. playbook-multi-project-context-v1.md, index-knowledge-router-v1.md). Резолв scope: active_scope (если передан) → workspace-scope-map-v1 (по workspace_path) → active-scope.current → fallback current-projects.",
             InputSchema = Schema(new
             {
                 type = "object",
@@ -281,7 +281,7 @@ internal static class ToolCatalog
         new()
         {
             Name = "read_knowledge_file",
-            Description = "Прочитать файл из каталога knowledge/ канона. Путь к канону: canon_path или AGENT_NOTES_CANON_PATH. Возвращает содержимое или пустую строку, если файла нет.",
+            Description = "Прочитать файл из каталога knowledge/ канона. Путь к канону: canon_path или AGENT_NOTES_CANON_PATH. Возвращает содержимое или пустую строку, если файла нет. Для протоколов и индекса роутера KB: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md, agent-memory-and-operating-principles-v1.md (route_context их не подставляет автоматически).",
             InputSchema = Schema(new
             {
                 type = "object",
