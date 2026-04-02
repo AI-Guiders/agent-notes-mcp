@@ -40,9 +40,19 @@ MLP-v1 в этом репозитории:
 
 Публиковать **только** основной проект (в solution `AgentNotesMcp.slnx` ещё тесты — иначе `dotnet publish` на `.slnx` может смешать вывод тестового проекта с `publish/`).
 
+**Self-contained (win-x64):** в `AgentNotesMcp.csproj` заданы `<SelfContained>true</SelfContained>` и `<RuntimeIdentifier>win-x64</RuntimeIdentifier>`, поэтому команда ниже уже кладёт в `publish/` **полный** рантайм .NET под Windows x64 — отдельно ставить shared runtime на машину не нужно.
+
 ```bash
 dotnet publish AgentNotesMcp.csproj -c Release -o publish
 ```
+
+Явно те же настройки (если убрать RID/SelfContained из csproj или переопределить):
+
+```bash
+dotnet publish AgentNotesMcp.csproj -c Release -o publish -r win-x64 --self-contained true
+```
+
+Другой RID (например `linux-x64`) — передай `-r <rid>`; кросс-сборка нескольких платформ с Windows — см. `scripts/publish-release-win.ps1` ниже.
 
 Рекомендуется junction: например `D:\agent-notes-mcp` → каталог `publish`; в Cursor в mcp.json указать `command`: `D:\agent-notes-mcp\AgentNotesMcp.exe`, `args`: `[]`.
 
