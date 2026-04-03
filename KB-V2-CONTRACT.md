@@ -8,6 +8,11 @@ Production-oriented memory contract for stable long sessions and predictable con
 - Preserve decision-grade memory without dragging full archives into hot context.
 - Make context loading explicit, measurable, and reversible.
 
+## Publication boundary (канон)
+
+- Источник правды по публичной KB: репозиторий **agent-notes** — **`knowledge/PUBLISHING.md`**, пути-исключения — **`knowledge/public-kb.ignore`**, сборка **`scripts/build-public-kb.ps1`** (плюс **`<!-- public-cut -->`** в `agent-notes.md`, фильтр по первой строке «НЕ ПУБЛИКОВАТЬ»).
+- Путь **`knowledge/work/`** (включая **`work/projects`**) — оперативный слой; в **kb-public** не попадает, если перечислен в **`public-kb.ignore`** (по умолчанию так и есть).
+
 ## Layer Boundaries
 
 - **L0 (hot cache):** current goal, next action, blockers, guardrails.

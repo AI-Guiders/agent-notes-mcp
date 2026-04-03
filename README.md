@@ -96,6 +96,12 @@ dotnet publish AgentNotesMcp.csproj -c Release -o publish -r win-x64 --self-cont
 - **Когда что использовать:** полная замена файла — `write_knowledge_file`; добавить блок в конец — `append_knowledge_file`; вставить/обновить секцию по ID — `upsert_knowledge_section`; удалить секцию по ID — `delete_knowledge_section`. Append, upsert и delete снижают риск затереть весь файл.
 - Рекомендация: в окружении, где запускается MCP, задать `AGENT_NOTES_CANON_PATH=d:\Experiments\agent-notes` (или свой путь к канону), тогда при вызове можно не передавать `canon_path`.
 
+#### Публичная KB (kb-public) и каталог `knowledge/work/`
+
+В репозитории **канона agent-notes** правила публикации — **`knowledge/PUBLISHING.md`**; список **не публикуемых путей** под `knowledge/` (как у `.gitignore`) — **`knowledge/public-kb.ignore`**; сборка — **`scripts/build-public-kb.ps1`** (читает ignore-файл, обрезка `agent-notes.md` по `<!-- public-cut -->`, доп. фильтр по первой строке «НЕ ПУБЛИКОВАТЬ», постобработка индекс-роутера).
+
+Краткий контракт памяти без дублирования канона: **`KB-V2-CONTRACT.md`** (раздел «Publication boundary»).
+
 ## Формат секций для upsert
 
 `upsert_agent_notes_section` использует маркеры:
