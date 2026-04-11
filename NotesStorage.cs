@@ -332,8 +332,9 @@ public sealed class NotesStorage
         var resolvedScope = ResolveScope(activeScope, sections, workspacePath);
 
         var notesPath = GetNotesPath(workspacePath);
-        var l0 = ResolveL0Ids(sections, notesPath);
-        var priorityIds = (l0 ?? DefaultL0Ids()).ToList();
+        var manifest = LoadMemoryArchitectureManifest(sections, notesPath);
+        var l0 = ResolveL0Ids(sections, notesPath, manifest);
+        var priorityIds = (l0 ?? HotContextDefaults.DefaultL0Ids).ToList();
         var scopeId = ResolveScopeSectionId(resolvedScope, sections);
         priorityIds.Add(scopeId);
 
@@ -341,7 +342,7 @@ public sealed class NotesStorage
         var blocks = new List<string>();
         foreach (var id in priorityIds.Distinct(StringComparer.Ordinal))
         {
-            if (IsL1Excluded(id))
+            if (IsHotExcluded(id, manifest?.HotContextSectionExclusions))
                 continue;
             if (!sections.TryGetValue(id, out var content))
                 continue;
@@ -379,7 +380,10 @@ public sealed class NotesStorage
 
         var hotChars = hotSections.Sum(x => x.chars);
         var hotLines = hotSections.Sum(x => x.lines);
-        var missingCoreSections = new[] { "active-scope", "current-task" }
+        var manifestForHealth = LoadMemoryArchitectureManifest(sections, notesPath);
+        var (warnBudget, critBudget) = ResolveHotBudgetChars(manifestForHealth);
+
+        var missingCoreSections = HotContextDefaults.RequiredCoreSectionIds
             .Where(required => !sections.ContainsKey(required))
             .ToArray();
 
@@ -387,12 +391,12 @@ public sealed class NotesStorage
         var recommendCompaction = false;
         warnings.AddRange(ValidateMemoryArchitecture(sections, notesPath));
 
-        if (hotChars > 12000)
+        if (hotChars > critBudget)
         {
             warnings.Add("hot_context_over_critical_budget");
             recommendCompaction = true;
         }
-        else if (hotChars > 6000)
+        else if (hotChars > warnBudget)
         {
             warnings.Add("hot_context_over_warning_budget");
             recommendCompaction = true;
@@ -793,7 +797,7 @@ public sealed class NotesStorage
         return Path.IsPathRooted(p) ? Path.GetFullPath(p) : Path.GetFullPath(Path.Combine(canonRoot, "knowledge", p));
     }
 
-    private static (IReadOnlyList<string> l0, IReadOnlyList<string>? compactOrderSuffix)? TryLoadMemoryArchitectureManifest(string notesPath, string manifestPath)
+    private static MemoryArchitectureManifestData? TryLoadMemoryArchitectureManifest(string notesPath, string manifestPath)
     {
         var fullPath = TryResolveManifestFullPath(notesPath, manifestPath);
         if (string.IsNullOrWhiteSpace(fullPath) || !File.Exists(fullPath))
@@ -832,7 +836,29 @@ public sealed class NotesStorage
                 suffix = list.Count > 0 ? list : null;
             }
 
-            return l0.Count > 0 ? (l0, suffix) : null;
+            int? warnBudget = null;
+            int? critBudget = null;
+            if (root.TryGetProperty("hot_context_budget_warning_chars", out var wEl) && wEl.ValueKind == JsonValueKind.Number)
+                warnBudget = wEl.GetInt32();
+            if (root.TryGetProperty("hot_context_budget_critical_chars", out var cEl) && cEl.ValueKind == JsonValueKind.Number)
+                critBudget = cEl.GetInt32();
+
+            IReadOnlyList<string>? exclusions = null;
+            if (root.TryGetProperty("hot_context_section_exclusions", out var exEl) && exEl.ValueKind == JsonValueKind.Array)
+            {
+                var list = new List<string>();
+                foreach (var item in exEl.EnumerateArray())
+                {
+                    var id = item.ValueKind == JsonValueKind.String ? (item.GetString() ?? "").Trim() : "";
+                    if (id.Length == 0)
+                        continue;
+                    if (Regex.IsMatch(id, "^[A-Za-z0-9._-]+$"))
+                        list.Add(id);
+                }
+                exclusions = list.Count > 0 ? list : null;
+            }
+
+            return new MemoryArchitectureManifestData(l0, suffix, warnBudget, critBudget, exclusions);
         }
         catch
         {
@@ -840,81 +866,68 @@ public sealed class NotesStorage
         }
     }
 
-    private static IReadOnlyList<string>? ResolveL0Ids(IReadOnlyDictionary<string, string> sections, string notesPath)
-    {
-        var memoryArch = sections.GetValueOrDefault("memory-architecture-v1");
-        var manifestPath = TryParseManifestRelativePath(memoryArch);
-        if (!string.IsNullOrWhiteSpace(manifestPath))
-        {
-            var manifest = TryLoadMemoryArchitectureManifest(notesPath, manifestPath);
-            if (manifest is not null)
-                return manifest.Value.l0;
-        }
-
-        return ParseL0FromMemoryArchitecture(memoryArch);
-    }
-
-    private static IReadOnlyList<string>? ResolveCompactOrderSuffix(IReadOnlyDictionary<string, string> sections, string notesPath)
+    private static MemoryArchitectureManifestData? LoadMemoryArchitectureManifest(IReadOnlyDictionary<string, string> sections, string notesPath)
     {
         var memoryArch = sections.GetValueOrDefault("memory-architecture-v1");
         var manifestPath = TryParseManifestRelativePath(memoryArch);
         if (string.IsNullOrWhiteSpace(manifestPath))
             return null;
-        var manifest = TryLoadMemoryArchitectureManifest(notesPath, manifestPath);
-        return manifest?.compactOrderSuffix;
+        return TryLoadMemoryArchitectureManifest(notesPath, manifestPath);
     }
 
-    private static string[] DefaultL0Ids()
+    private static (int Warning, int Critical) ResolveHotBudgetChars(MemoryArchitectureManifestData? manifest)
     {
-        return
-        [
-            "baseline-integrity-epistemic-v1",
-            "epistemic-default-distrust-v1",
-            "active-scope",
-            "current-task",
-            "core-software-context",
-            "language-style-ru",
-            "personal-workstyle-v1",
-            "execution-gate-v1",
-            "response-finalizer-v1",
-            "hot-context-writing-contract",
-            "ontology-router-v1"
-        ];
+        var w = manifest?.HotBudgetWarningChars ?? HotContextDefaults.HotContextBudgetWarningChars;
+        var c = manifest?.HotBudgetCriticalChars ?? HotContextDefaults.HotContextBudgetCriticalChars;
+        if (w < 1)
+            w = HotContextDefaults.HotContextBudgetWarningChars;
+        if (c < 1)
+            c = HotContextDefaults.HotContextBudgetCriticalChars;
+        if (w >= c)
+        {
+            return (HotContextDefaults.HotContextBudgetWarningChars, HotContextDefaults.HotContextBudgetCriticalChars);
+        }
+
+        return (w, c);
     }
 
-    private static string[] DefaultCompactOrderSuffix()
+    private static bool IsHotExcluded(string sectionId, IReadOnlyList<string>? manifestExclusions)
     {
-        return
-        [
-            "workspace-scope-map-v1",
-            "scope-door-to-singularity",
-            "scope-portal",
-            "scope-mixed",
-            "memory-architecture-v1",
-            "memory-load-policy-v1",
-            "memory-compaction-loop-v1",
-            "archive-index-v1"
-        ];
+        if (HotContextDefaults.IsBuiltInHotExclusion(sectionId))
+            return true;
+        if (manifestExclusions is null)
+            return false;
+        foreach (var x in manifestExclusions)
+        {
+            if (sectionId.Equals(x, StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
     }
 
-    /// <summary>L1 sections (load on demand): never include in hot context even if listed in memory-architecture L0.</summary>
-    private static bool IsL1Excluded(string sectionId)
+    private static IReadOnlyList<string>? ResolveL0Ids(IReadOnlyDictionary<string, string> sections, string notesPath, MemoryArchitectureManifestData? manifest = null)
     {
-        return sectionId.StartsWith("hpmor-", StringComparison.OrdinalIgnoreCase)
-            || sectionId.Equals("it-source-mini-index-v1", StringComparison.Ordinal)
-            || sectionId.Equals("knowledge-index-v1", StringComparison.Ordinal)
-            || sectionId.Equals("imc-ui-ux-vision-v1", StringComparison.Ordinal)
-            || sectionId.Equals("psychology-gender-studies-subdomain-v1", StringComparison.Ordinal)
-            || sectionId.Equals("world-human-system-v1", StringComparison.Ordinal)
-            || sectionId.Equals("world-human-system-playbook-v1", StringComparison.Ordinal);
+        manifest ??= LoadMemoryArchitectureManifest(sections, notesPath);
+        if (manifest is { L0.Count: > 0 })
+            return manifest.L0;
+
+        var memoryArch = sections.GetValueOrDefault("memory-architecture-v1");
+        return ParseL0FromMemoryArchitecture(memoryArch);
+    }
+
+    private static IReadOnlyList<string>? ResolveCompactOrderSuffix(IReadOnlyDictionary<string, string> sections, string notesPath)
+    {
+        return LoadMemoryArchitectureManifest(sections, notesPath)?.CompactOrderSuffix;
     }
 
     private static string[] BuildHotSectionIds(string resolvedScope, IReadOnlyDictionary<string, string> sections, string notesPath)
     {
-        var l0 = ResolveL0Ids(sections, notesPath);
-        var ids = (l0 ?? DefaultL0Ids()).ToList();
+        var manifest = LoadMemoryArchitectureManifest(sections, notesPath);
+        var l0 = ResolveL0Ids(sections, notesPath, manifest);
+        var ids = (l0 ?? HotContextDefaults.DefaultL0Ids).ToList();
         ids.Add(ResolveScopeSectionId(resolvedScope, sections));
-        return ids.Where(id => !IsL1Excluded(id)).Distinct(StringComparer.Ordinal).ToArray();
+        return ids.Where(id => !IsHotExcluded(id, manifest?.HotContextSectionExclusions)).Distinct(StringComparer.Ordinal).ToArray();
     }
 
     private static int CountLines(string content)
@@ -1090,9 +1103,9 @@ public sealed class NotesStorage
             return NormalizeWhitespace(notes);
 
         var l0 = ResolveL0Ids(sections, notesPath);
-        var startIds = (l0 ?? DefaultL0Ids()).ToList();
+        var startIds = (l0 ?? HotContextDefaults.DefaultL0Ids).ToList();
         var manifestSuffix = ResolveCompactOrderSuffix(sections, notesPath);
-        var suffixSeed = manifestSuffix?.ToArray() ?? DefaultCompactOrderSuffix();
+        var suffixSeed = manifestSuffix?.ToArray() ?? HotContextDefaults.DefaultCompactOrderSuffix;
         var suffixIds = suffixSeed.Where(id => !startIds.Contains(id, StringComparer.Ordinal));
         var preferredOrder = startIds.Concat(suffixIds).ToArray();
 
@@ -1136,7 +1149,7 @@ public sealed class NotesStorage
             return warnings;
         }
 
-        var ids = manifest.Value.l0;
+        var ids = manifest.L0;
         if (ids.Count == 0)
         {
             warnings.Add("memory_arch_manifest_l0_empty");
