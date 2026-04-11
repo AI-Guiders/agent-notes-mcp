@@ -12,14 +12,14 @@ internal static class ToolCatalog
         new()
         {
             Name = "memory_health",
-            Description = "Быстрый health-check памяти: размер hot-context, обязательные секции, предупреждения по бюджету и рекомендации по compaction. Резолв scope: active_scope (если передан) → workspace-scope-map-v1 (по workspace_path) → active-scope.current → fallback current-projects.",
+            Description = "Быстрый health-check памяти: размер hot-context, обязательные секции, предупреждения по бюджету и рекомендации по compaction. Резолв scope: active_scope (если передан) → workspace-scope-map-v1 (по workspace_path) → active-scope.current → fallback door-to-singularity.",
             InputSchema = Schema(new
             {
                 type = "object",
                 properties = new
                 {
                     workspace_path = new { type = "string", description = "Каталог workspace." },
-                    active_scope = new { type = "string", description = "Опционально: current-projects | portal | mixed." }
+                    active_scope = new { type = "string", description = "Опционально: door-to-singularity | portal | mixed (алиасы: dts, cp; ptl→portal; legacy: current-projects)." }
                 },
                 required = new[] { "workspace_path" }
             })
@@ -27,7 +27,7 @@ internal static class ToolCatalog
         new()
         {
             Name = "route_context",
-            Description = "Подобрать релевантные секции из agent-notes.md по запросу и собрать компактный context-пакет (router-first). Не индексирует файлы knowledge/ — длинные playbook/kb подгружать отдельно через read_knowledge_file (напр. playbook-multi-project-context-v1.md, index-knowledge-router-v1.md). Резолв scope: active_scope (если передан) → workspace-scope-map-v1 (по workspace_path) → active-scope.current → fallback current-projects.",
+            Description = "Подобрать релевантные секции из agent-notes.md по запросу и собрать компактный context-пакет (router-first). Не индексирует файлы knowledge/ — длинные playbook/kb подгружать отдельно через read_knowledge_file (напр. playbook-multi-project-context-v1.md, index-knowledge-router-v1.md). Резолв scope: active_scope (если передан) → workspace-scope-map-v1 (по workspace_path) → active-scope.current → fallback door-to-singularity.",
             InputSchema = Schema(new
             {
                 type = "object",
@@ -35,7 +35,7 @@ internal static class ToolCatalog
                 {
                     workspace_path = new { type = "string", description = "Каталог workspace." },
                     query = new { type = "string", description = "Поисковый запрос или задача для маршрутизации контекста." },
-                    active_scope = new { type = "string", description = "Опционально: current-projects | portal | mixed." },
+                    active_scope = new { type = "string", description = "Опционально: door-to-singularity | portal | mixed (алиасы: dts, cp; ptl→portal; legacy: current-projects)." },
                     max_sections = new { type = "integer", description = "Максимум секций в ответе (по умолчанию 5)." },
                     max_chars = new { type = "integer", description = "Бюджет символов для assembled_context (по умолчанию 12000)." }
                 },
@@ -89,14 +89,14 @@ internal static class ToolCatalog
         new()
         {
             Name = "read_hot_context",
-            Description = "Прочитать только горячий контекст (L0/L1) без загрузки архивного хвоста. Резолв scope: active_scope (если передан) → workspace-scope-map-v1 (по workspace_path) → active-scope.current → fallback current-projects.",
+            Description = "Прочитать только горячий контекст (L0/L1) без загрузки архивного хвоста. Резолв scope: active_scope (если передан) → workspace-scope-map-v1 (по workspace_path) → active-scope.current → fallback door-to-singularity.",
             InputSchema = Schema(new
             {
                 type = "object",
                 properties = new
                 {
                     workspace_path = new { type = "string", description = "Каталог workspace." },
-                    active_scope = new { type = "string", description = "Опционально: current-projects | portal | mixed." }
+                    active_scope = new { type = "string", description = "Опционально: door-to-singularity | portal | mixed (алиасы: dts, cp; ptl→portal; legacy: current-projects)." }
                 },
                 required = new[] { "workspace_path" }
             })

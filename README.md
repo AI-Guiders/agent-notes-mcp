@@ -120,7 +120,7 @@ dotnet publish AgentNotesMcp.csproj -c Release -o publish -r win-x64 --self-cont
 
 ```md
 <!-- section:workspace-scope-map-v1 -->
-- d:\Experiments\PersonalCursorFolder => current-projects
+- d:\Experiments\PersonalCursorFolder => door-to-singularity
 - c:\Projects\EDW.Portal.Repo => portal
 <!-- /section:workspace-scope-map-v1 -->
 ```
