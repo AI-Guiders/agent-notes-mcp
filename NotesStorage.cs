@@ -887,7 +887,7 @@ public sealed class NotesStorage
         return
         [
             "workspace-scope-map-v1",
-            "scope-current-projects",
+            "scope-door-to-singularity",
             "scope-portal",
             "scope-mixed",
             "memory-architecture-v1",
@@ -954,22 +954,35 @@ public sealed class NotesStorage
         return normalized[..maxChars] + "...";
     }
 
+    /// <summary>Maps legacy and shorthand scope names to canonical ids (active-scope / MCP active_scope).</summary>
+    private static string NormalizeScope(string scope)
+    {
+        var s = scope.Trim().ToLowerInvariant();
+        return s switch
+        {
+            "current-projects" or "dts" or "cp" => "door-to-singularity",
+            "ptl" => "portal",
+            _ => s
+        };
+    }
+
     private static string ResolveScope(string? requestedScope, IReadOnlyDictionary<string, string> sections, string workspacePath)
     {
         if (!string.IsNullOrWhiteSpace(requestedScope))
-            return requestedScope.Trim().ToLowerInvariant();
+            return NormalizeScope(requestedScope);
 
         var mappedScope = TryResolveScopeFromWorkspaceMap(workspacePath, sections);
         if (!string.IsNullOrWhiteSpace(mappedScope))
-            return mappedScope;
+            return NormalizeScope(mappedScope);
 
         if (!sections.TryGetValue("active-scope", out var activeScopeContent))
-            return "current-projects";
+            return "door-to-singularity";
 
         var match = Regex.Match(activeScopeContent, @"current\s*:\s*(?<scope>[A-Za-z0-9._-]+)", RegexOptions.IgnoreCase);
-        return match.Success
+        var raw = match.Success
             ? match.Groups["scope"].Value.Trim().ToLowerInvariant()
-            : "current-projects";
+            : "door-to-singularity";
+        return NormalizeScope(raw);
     }
 
     private static string? TryResolveScopeFromWorkspaceMap(string workspacePath, IReadOnlyDictionary<string, string> sections)
@@ -1034,17 +1047,29 @@ public sealed class NotesStorage
     private static string NormalizePathKey(string path) =>
         path.Trim().Replace('/', '\\').TrimEnd('\\');
 
+    private static string ResolveDtsDefaultSectionId(IReadOnlyDictionary<string, string> sections)
+    {
+        if (sections.ContainsKey("scope-door-to-singularity"))
+            return "scope-door-to-singularity";
+        if (sections.ContainsKey("scope-current-projects"))
+            return "scope-current-projects";
+        return "scope-door-to-singularity";
+    }
+
     private static string ResolveScopeSectionId(string resolvedScope, IReadOnlyDictionary<string, string> sections)
     {
         if (string.IsNullOrWhiteSpace(resolvedScope))
-            return "scope-current-projects";
+            return ResolveDtsDefaultSectionId(sections);
 
-        var normalizedScope = resolvedScope.Trim().ToLowerInvariant();
+        var normalizedScope = NormalizeScope(resolvedScope.Trim());
         var genericScopeId = $"scope-{normalizedScope}";
         if (sections.ContainsKey(genericScopeId))
             return genericScopeId;
 
-        return "scope-current-projects";
+        if (normalizedScope == "door-to-singularity" && sections.ContainsKey("scope-current-projects"))
+            return "scope-current-projects";
+
+        return genericScopeId;
     }
 
     private static bool IsPrefixPathMatch(string workspacePath, string mapKeyPath)
