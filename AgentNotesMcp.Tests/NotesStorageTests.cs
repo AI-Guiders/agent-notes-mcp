@@ -15,7 +15,7 @@ public sealed class NotesStorageTests
         var storage = new NotesStorage();
 
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "current-task", "first state"));
-        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "scope-current-projects", "scope body"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "scope-door-to-singularity", "scope body"));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "current-task", "second state"));
 
         var notes = storage.Read(temp.WorkspacePath);
@@ -210,7 +210,7 @@ public sealed class NotesStorageTests
         using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
         var storage = new NotesStorage();
 
-        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: current-projects"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: door-to-singularity"));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "current-task", new string('x', 7000)));
 
         var json = storage.MemoryHealth(temp.WorkspacePath, null);
@@ -237,12 +237,12 @@ public sealed class NotesStorageTests
             - active-scope
             - current-task
             ### L1: Operational
-            - scope-current-projects
+            - scope-door-to-singularity
             """;
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "memory-architecture-v1", memoryArch));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "custom-baseline-a", "baseline A"));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "custom-baseline-b", "baseline B"));
-        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: current-projects"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: door-to-singularity"));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "current-task", "task"));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "scope-current-projects", "scope body"));
 
@@ -292,7 +292,7 @@ public sealed class NotesStorageTests
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "memory-architecture-v1", memoryArch));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "custom-baseline-a", "baseline A"));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "custom-baseline-b", "baseline B"));
-        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: current-projects"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: door-to-singularity"));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "current-task", "task"));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "scope-current-projects", "scope body"));
 
@@ -315,9 +315,9 @@ public sealed class NotesStorageTests
         using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
         var storage = new NotesStorage();
 
-        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: current-projects"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: door-to-singularity"));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "current-task", "Ship release flow for MCP stack"));
-        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "scope-current-projects", "Engineering release queue"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "scope-door-to-singularity", "Engineering release queue"));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "random-notes", "Unrelated text"));
 
         var json = storage.RouteContext(temp.WorkspacePath, "release flow", null, maxSections: 3, maxChars: 5000);
@@ -328,6 +328,38 @@ public sealed class NotesStorageTests
         var assembled = root.GetProperty("assembled_context").GetString() ?? "";
         Assert.Contains("current-task", assembled);
         Assert.Contains("release", assembled, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ReadHotContext_LegacyActiveScopeValue_ResolvesToCanonical_LoadsLegacySectionWhenNewIdMissing()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: current-projects"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "scope-current-projects", "legacy hub body"));
+
+        var json = storage.ReadHotContext(temp.WorkspacePath, null);
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal("door-to-singularity", doc.RootElement.GetProperty("active_scope").GetString());
+        var content = doc.RootElement.GetProperty("content").GetString() ?? "";
+        Assert.Contains("legacy hub body", content);
+    }
+
+    [Fact]
+    public void ReadHotContext_ExplicitDtsAlias_ResolvesToDoorToSingularity()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "scope-door-to-singularity", "dts scope"));
+
+        var json = storage.ReadHotContext(temp.WorkspacePath, "dts");
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal("door-to-singularity", doc.RootElement.GetProperty("active_scope").GetString());
+        Assert.Contains("dts scope", doc.RootElement.GetProperty("content").GetString() ?? "");
     }
 
     private static int Count(string value, string token)
