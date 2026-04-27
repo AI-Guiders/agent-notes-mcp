@@ -194,7 +194,13 @@ internal sealed class ToolHandlers
     {
         var canonPath = ToolArgs.OptionalString(args, "canon_path");
         var filePath = ToolArgs.RequiredString(args, "file_path");
-        return _storage.ReadKnowledgeFile(canonPath, filePath);
+        // offset: first line to return, 1-based (like an editor). limit: max lines; 0 = empty; absent = to EOF.
+        var offsetLine = ToolArgs.OptionalClampedInt(args, "offset", 1, 10_000_000);
+        var limitLines = ToolArgs.OptionalClampedInt(args, "limit", 0, 10_000_000);
+        if (offsetLine is null && limitLines is null) return _storage.ReadKnowledgeFile(canonPath, filePath);
+        var from = offsetLine ?? 1;
+        int? take = limitLines;
+        return _storage.ReadKnowledgeFile(canonPath, filePath, from, take);
     }
 
     private string ListKnowledgeFiles(IReadOnlyDictionary<string, JsonElement> args)

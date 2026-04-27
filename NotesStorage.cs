@@ -65,11 +65,34 @@ public sealed class NotesStorage
         return Path.Combine(root, KnowledgeDirName, relative);
     }
 
-    public string ReadKnowledgeFile(string? canonPath, string filePath)
+    public string ReadKnowledgeFile(string? canonPath, string filePath, int? firstLine1Based = null, int? maxLineCount = null)
     {
         var fullPath = GetKnowledgeFilePath(canonPath, filePath);
-        return File.Exists(fullPath) ? File.ReadAllText(fullPath, Encoding.UTF8) : "";
+        if (!File.Exists(fullPath)) return "";
+        var full = File.ReadAllText(fullPath, Encoding.UTF8);
+        if (firstLine1Based is null && maxLineCount is null) return full;
+        return SliceTextByLines(full, firstLine1Based ?? 1, maxLineCount);
     }
+
+    /// <summary>Return a substring of <paramref name="text"/> by line numbers. <paramref name="firstLine1Based"/> is 1-based. <paramref name="maxLineCount"/>: null = to EOF, 0 = empty, N = at most N lines.</summary>
+    internal static string SliceTextByLines(string text, int firstLine1Based, int? maxLineCount)
+    {
+        if (maxLineCount is 0) return "";
+        var lines = SplitToLines(text);
+        var start = Math.Max(0, firstLine1Based - 1);
+        if (start >= lines.Length) return "";
+        if (maxLineCount is int cap)
+        {
+            if (cap < 0) return "";
+            var n = Math.Min(cap, lines.Length - start);
+            if (n <= 0) return "";
+            return string.Join("\n", lines, start, n);
+        }
+        return string.Join("\n", lines, start, lines.Length - start);
+    }
+
+    private static string[] SplitToLines(string text) =>
+        text.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
 
     public string ListKnowledgeFiles(string? canonPath, string? subdir)
     {
