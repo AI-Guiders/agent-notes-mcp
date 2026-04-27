@@ -73,7 +73,7 @@
     },
     {
       "name": "read_knowledge_file",
-      "description": "Прочитать файл из каталога knowledge/ канона. Путь к канону: canon_path или AGENT_NOTES_CANON_PATH. Возвращает содержимое или пустую строку, если файла нет. Для протоколов и индекса роутера KB: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md, agent-memory-and-operating-principles-v1.md (route_context их не подставляет автоматически)."
+      "description": "Прочитать файл из каталога knowledge/ канона. Путь к канону: canon_path или AGENT_NOTES_CANON_PATH. Возвращает содержимое или пустую строку, если файла нет. Опционально offset (номер первой возвращаемой строки, 1-based, как в редакторе) и limit (макс. число строк; без limit — до конца файла; только limit — с начала, первые N строк). Для протоколов и индекса роутера KB: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md, agent-memory-and-operating-principles-v1.md (route_context их не подставляет автоматически)."
     },
     {
       "name": "list_knowledge_files",

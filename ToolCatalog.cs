@@ -282,14 +282,16 @@ internal static class ToolCatalog
         new()
         {
             Name = "read_knowledge_file",
-            Description = "Прочитать файл из каталога knowledge/ канона. Путь к канону: canon_path или AGENT_NOTES_CANON_PATH. Возвращает содержимое или пустую строку, если файла нет. Для протоколов и индекса роутера KB: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md, agent-memory-and-operating-principles-v1.md (route_context их не подставляет автоматически).",
+            Description = "Прочитать файл из каталога knowledge/ канона. Путь к канону: canon_path или AGENT_NOTES_CANON_PATH. Возвращает содержимое или пустую строку, если файла нет. Опционально offset (номер первой возвращаемой строки, 1-based, как в редакторе) и limit (макс. число строк; без limit — до конца файла; только limit — с начала, первые N строк). Для протоколов и индекса роутера KB: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md, agent-memory-and-operating-principles-v1.md (route_context их не подставляет автоматически).",
             InputSchema = Schema(new
             {
                 type = "object",
                 properties = new
                 {
                     canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH." },
-                    file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например kb-music-theory-fundamentals-v1.md." }
+                    file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например kb-music-theory-fundamentals-v1.md." },
+                    offset = new { type = "integer", description = "Опционально. Номер первой возвращаемой строки, нумерация с 1. Без offset и limit — весь файл." },
+                    limit = new { type = "integer", description = "Опционально. Максимум строк в ответе (после offset). 0 = пусто. Без limit — до конца файла." }
                 },
                 required = new[] { "file_path" }
             })

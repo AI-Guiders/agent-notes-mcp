@@ -43,6 +43,21 @@ internal static class ToolArgs
         return Math.Clamp(parsed, min, max);
     }
 
+    /// <summary>Optional integer: key missing or null → null; otherwise parse number or string, then clamp to [min, max].</summary>
+    internal static int? OptionalClampedInt(IReadOnlyDictionary<string, JsonElement> args, string key, int min, int max)
+    {
+        if (!args.TryGetValue(key, out var raw) || raw.ValueKind == JsonValueKind.Null)
+            return null;
+        int parsed;
+        if (raw.ValueKind == JsonValueKind.Number)
+            parsed = raw.GetInt32();
+        else if (raw.ValueKind == JsonValueKind.String && int.TryParse(raw.GetString(), out var s))
+            parsed = s;
+        else
+            return null;
+        return Math.Clamp(parsed, min, max);
+    }
+
     internal static bool IsValidSectionId(string sectionId) => Regex.IsMatch(sectionId, "^[A-Za-z0-9._-]+$");
 
     internal static bool GetBoolOrDefault(IReadOnlyDictionary<string, JsonElement> args, string key, bool defaultValue)

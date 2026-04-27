@@ -95,6 +95,22 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
+    public void Knowledge_Read_OffsetAndLimit_SlicesByOneBasedLines()
+    {
+        using var temp = TempCanon.Create();
+        var storage = new NotesStorage();
+        storage.WriteKnowledgeFile(temp.CanonPath, "lines.md", "a\r\nb\nc\nd", saveRevision: false);
+        var path = temp.CanonPath;
+        Assert.Equal("b\nc", storage.ReadKnowledgeFile(path, "lines.md", 2, 2));
+        Assert.Equal("c\nd", storage.ReadKnowledgeFile(path, "lines.md", 3, null));
+        Assert.Equal("a\nb", storage.ReadKnowledgeFile(path, "lines.md", 1, 2));
+        Assert.Equal("a\nb\nc\nd", storage.ReadKnowledgeFile(path, "lines.md", 1, null));
+        Assert.Equal("d", storage.ReadKnowledgeFile(path, "lines.md", 4, 10));
+        Assert.Equal("", storage.ReadKnowledgeFile(path, "lines.md", 5, 1));
+        Assert.Equal("", storage.ReadKnowledgeFile(path, "lines.md", 1, 0));
+    }
+
+    [Fact]
     public void Knowledge_Append_DoesNotOverwrite()
     {
         using var temp = TempCanon.Create();
