@@ -56,6 +56,25 @@ dotnet publish AgentNotesMcp.csproj -c Release -o publish -r win-x64 --self-cont
 
 Рекомендуется junction: например `D:\agent-notes-mcp` → каталог `publish`; в Cursor в mcp.json указать `command`: `D:\agent-notes-mcp\AgentNotesMcp.exe`, `args`: `[]`.
 
+### Git remotes policy
+
+Для этого репозитория можно держать один `origin` c несколькими push-адресами.
+
+- `origin` fetch: `git@193.124.113.7:Krawler/agent-notes-mcp.git`
+- `origin` push: `git@193.124.113.7:Krawler/agent-notes-mcp.git`
+- `origin` push: `git@gitlab.wissance.com:wissance/ai/agent-notes-mcp.git`
+- `github` (отдельный remote): `git@github.com:KarataevDmitry/agent-notes-mcp.git`
+
+Быстрые команды:
+
+```bash
+git remote -v
+git push origin HEAD
+git push github HEAD:main --force
+```
+
+`git push origin HEAD` отправляет изменения сразу в оба GitLab (все `push-url` у `origin`).
+
 ### Релиз Ubuntu 25.10 (GitLab CI)
 
 Для **linux-x64** есть пайплайн на образе **ubuntu:25.10**: при push **тега** вида `v2026.03.22-ubuntu2510` job собирает self-contained zip и job **release** создаёт [GitLab Release](http://193.124.113.7/Krawler/agent-notes-mcp/-/releases) с прикреплённым `agent-notes-mcp-linux-x64.zip`.
