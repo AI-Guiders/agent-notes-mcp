@@ -4,6 +4,7 @@ publish/
 publish-smoke/
 publish-linux-test/
 publish-release-temp-*/
+publish-release/
 agent-notes-mcp-publish/
 .vs/
 *.user
