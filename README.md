@@ -40,6 +40,14 @@ MLP-v1 в этом репозитории:
 
 Публиковать **только** основной проект (в solution `AgentNotesMcp.slnx` ещё тесты — иначе `dotnet publish` на `.slnx` может смешать вывод тестового проекта с `publish/`).
 
+### Быстрый локальный publish (рекомендуется)
+
+`publish-and-deploy.ps1` — удобный сценарий для локальной установки MCP под Cursor: publish self-contained `win-x64`, зеркалирование в фиксированный путь (по умолчанию `D:\agent-notes-mcp`) и гашение процесса, если он лочит файлы.
+
+```powershell
+.\publish-and-deploy.ps1
+```
+
 **Self-contained (win-x64):** в `AgentNotesMcp.csproj` заданы `<SelfContained>true</SelfContained>` и `<RuntimeIdentifier>win-x64</RuntimeIdentifier>`, поэтому команда ниже уже кладёт в `publish/` **полный** рантайм .NET под Windows x64 — отдельно ставить shared runtime на машину не нужно.
 
 ```bash
