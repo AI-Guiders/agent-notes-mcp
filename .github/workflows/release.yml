@@ -33,6 +33,8 @@ jobs:
         with:
           repository: ${{ github.repository_owner }}/agent-notes-core
           path: src/agent-notes-core
+          # GITHUB_TOKEN видит только текущий репо; для приватного core нужен PAT (секрет).
+          token: ${{ secrets.PRIVATE_DEPS_PAT }}
 
       - uses: actions/setup-dotnet@v4
         with:
