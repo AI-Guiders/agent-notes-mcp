@@ -253,6 +253,32 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
+    public void MemoryHealth_UsesWorkspaceScopeMapFromWorkLocal_WhenCanonEnvSet()
+    {
+        using var ws = TempWorkspace.Create();
+        using var canon = TempCanon.Create();
+        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge"));
+        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge", "work", "local"));
+        var mapPath = Path.Combine(canon.CanonPath, "knowledge", "work", "local", "workspace-scope-map-v1.md");
+        File.WriteAllText(mapPath, $"{Path.GetFullPath(ws.WorkspacePath)} => portal\n", Encoding.UTF8);
+
+        using var clearFile = EnvVarScope.Clear("AGENT_NOTES_FILE");
+        using var setCanon = EnvVarScope.Set("AGENT_NOTES_CANON_PATH", canon.CanonPath);
+        var storage = new NotesStorage();
+
+        const string notesContent = """
+<!-- section:current-task -->
+ok
+<!-- /section:current-task -->
+""";
+        Assert.Equal("OK", storage.Write(ws.WorkspacePath, notesContent));
+
+        var json = storage.MemoryHealth(ws.WorkspacePath, null);
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal("portal", doc.RootElement.GetProperty("resolved_scope").GetString());
+    }
+
+    [Fact]
     public void MemoryHealth_ReportsWarning_WhenHotContextIsTooLarge()
     {
         using var temp = TempWorkspace.Create();

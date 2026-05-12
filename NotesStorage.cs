@@ -1056,10 +1056,17 @@ public sealed class NotesStorage
 
     private static string? TryResolveScopeFromWorkspaceMap(string workspacePath, IReadOnlyDictionary<string, string> sections)
     {
-        var mapContent =
-            sections.TryGetValue("workspace-scope-map-v1", out var primaryMap) ? primaryMap :
-            sections.TryGetValue("scope-map-v1", out var legacyMap) ? legacyMap :
-            null;
+        // Prefer machine-local map under canon (single source); else hot sections (legacy).
+        var fromFile = TryLoadWorkspaceScopeMapFromWorkLocal();
+        var sectionPrimary = sections.TryGetValue("workspace-scope-map-v1", out var pm) ? pm : null;
+        var sectionLegacy = sections.TryGetValue("scope-map-v1", out var lm) ? lm : null;
+        var mapContent = !string.IsNullOrWhiteSpace(fromFile)
+            ? fromFile
+            : !string.IsNullOrWhiteSpace(sectionPrimary)
+                ? sectionPrimary
+                : !string.IsNullOrWhiteSpace(sectionLegacy)
+                    ? sectionLegacy
+                    : null;
 
         if (string.IsNullOrWhiteSpace(mapContent))
             return null;
@@ -1087,6 +1094,27 @@ public sealed class NotesStorage
         }
 
         return bestScope;
+    }
+
+    /// <summary>Optional map lines (same format as hot section): <c>knowledge/work/local/workspace-scope-map-v1.md</c> under canon root. Overrides empty/missing hot sections when <see cref="ResolveCanonPath"/> succeeds.</summary>
+    private static string? TryLoadWorkspaceScopeMapFromWorkLocal()
+    {
+        try
+        {
+            var root = ResolveCanonPath(null);
+            var path = Path.Combine(root, "knowledge", "work", "local", "workspace-scope-map-v1.md");
+            if (!File.Exists(path))
+                return null;
+            return File.ReadAllText(path, Encoding.UTF8);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
     }
 
     private static (string workspaceKey, string scope)? ParseScopeMapLine(string rawLine)
