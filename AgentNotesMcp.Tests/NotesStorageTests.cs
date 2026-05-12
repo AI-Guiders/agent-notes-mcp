@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using AgentNotes.Core;
 
@@ -188,10 +189,26 @@ public sealed class NotesStorageTests
     [Fact]
     public void Knowledge_ResolveCanonPath_ThrowsWhenNeitherCanonPathNorEnvSet()
     {
-        using var env = EnvVarScope.Clear("AGENT_NOTES_CANON_PATH");
+        using var clearCanon = EnvVarScope.Clear("AGENT_NOTES_CANON_PATH");
+        using var clearFile = EnvVarScope.Clear("AGENT_NOTES_FILE");
         var storage = new NotesStorage();
         Assert.Throws<ArgumentException>(() =>
             storage.WriteKnowledgeFile(null, "any.md", "x"));
+    }
+
+    [Fact]
+    public void Knowledge_ResolveCanonPath_InferredFromAgentNotesFile_WhenCanonEnvUnset()
+    {
+        using var temp = TempCanon.Create();
+        Directory.CreateDirectory(Path.Combine(temp.CanonPath, "knowledge"));
+        var notesPath = Path.Combine(temp.CanonPath, "agent-notes.md");
+        File.WriteAllText(notesPath, "# notes\n", Encoding.UTF8);
+
+        using var clearCanon = EnvVarScope.Clear("AGENT_NOTES_CANON_PATH");
+        using var setFile = EnvVarScope.Set("AGENT_NOTES_FILE", notesPath);
+        var storage = new NotesStorage();
+        storage.WriteKnowledgeFile(null, "from-inferred-canon.md", "body");
+        Assert.Equal("body", storage.ReadKnowledgeFile(null, "from-inferred-canon.md"));
     }
 
     [Fact]

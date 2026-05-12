@@ -36,15 +36,43 @@ public sealed class NotesStorage
         return Path.Combine(root, NotesDirName, NotesFileName);
     }
 
-    /// <summary>Resolve canon root: from argument or AGENT_NOTES_CANON_PATH. Used for knowledge/ reads and writes.</summary>
+    /// <summary>Resolve canon root: tool argument, then AGENT_NOTES_CANON_PATH, else inferred from AGENT_NOTES_FILE (ancestor directory containing knowledge/).</summary>
     public static string ResolveCanonPath(string? canonPath)
     {
-        var root = !string.IsNullOrWhiteSpace(canonPath)
-            ? canonPath.Trim()
-            : Environment.GetEnvironmentVariable(EnvCanonPath);
-        if (string.IsNullOrWhiteSpace(root))
-            throw new ArgumentException("canon_path is required when AGENT_NOTES_CANON_PATH is not set.");
-        return Path.GetFullPath(root);
+        if (!string.IsNullOrWhiteSpace(canonPath))
+            return Path.GetFullPath(canonPath.Trim());
+
+        var fromEnvCanon = Environment.GetEnvironmentVariable(EnvCanonPath);
+        if (!string.IsNullOrWhiteSpace(fromEnvCanon))
+            return Path.GetFullPath(fromEnvCanon.Trim());
+
+        var fromEnvNotes = Environment.GetEnvironmentVariable(EnvNotesFile);
+        if (!string.IsNullOrWhiteSpace(fromEnvNotes))
+        {
+            var inferred = TryInferCanonRootFromAgentNotesFilePath(fromEnvNotes.Trim());
+            if (inferred is not null)
+                return inferred;
+        }
+
+        throw new ArgumentException(
+            "canon_path is required when AGENT_NOTES_CANON_PATH is not set and AGENT_NOTES_FILE does not lie under a directory tree that contains knowledge/ (or AGENT_NOTES_FILE is unset).");
+    }
+
+    /// <summary>Walks parents from the notes file directory; returns the first directory that contains a <c>knowledge/</c> subfolder (agent-notes repo layout).</summary>
+    internal static string? TryInferCanonRootFromAgentNotesFilePath(string agentNotesFilePath)
+    {
+        var fullPath = Path.GetFullPath(agentNotesFilePath);
+        var current = Path.GetDirectoryName(fullPath);
+        while (!string.IsNullOrEmpty(current))
+        {
+            if (Directory.Exists(Path.Combine(current, KnowledgeDirName)))
+                return current;
+
+            var parent = Directory.GetParent(current);
+            current = parent?.FullName;
+        }
+
+        return null;
     }
 
     /// <summary>Validate relative path under knowledge/: no "..", no leading slash. Returns normalized relative path.</summary>
