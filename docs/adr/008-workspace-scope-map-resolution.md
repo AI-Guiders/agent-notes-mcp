@@ -17,7 +17,7 @@
 
 1. Если **`active_scope`** передан и не пустой — нормализация алиасов (`NormalizeScope`: `dts`/`current-projects` → `door-to-singularity`, `ptl` → `portal`, `hrv`/`edwh` → `harvester` и т.д.).
 2. Иначе — **`TryResolveScopeFromWorkspaceMap`**: содержимое секции **`workspace-scope-map-v1`** (fallback: legacy **`scope-map-v1`**) в распарсенном **`agent-notes.md`**; строки вида `path => scope`, самый длинный префикс пути к `workspace_path` выигрывает.
-3. Иначе — секция **`active-scope`**, поле `current:`.
+3. Иначе — секция **`active-scope`**: если есть строка **`current:`** — её значение (легаси-оверрайд); иначе тот же fallback, что на шаге 4.
 4. Иначе — **`door-to-singularity`**.
 
 Карта путей в публичной сборке **kb-public не должна** присутствовать: в каноне для автора первая граница **`<!-- public-cut -->`** стоит **до** секции карты; полный hot с картой — только в локальном/полном клоне канона.

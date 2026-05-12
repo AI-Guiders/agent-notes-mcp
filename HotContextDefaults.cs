@@ -107,7 +107,6 @@ internal static class HotContextDefaults
                 "memory-architecture-v1"
             ],
             RequiredCoreSectionIds: [
-                "active-scope",
                 "current-task"
             ]);
     }

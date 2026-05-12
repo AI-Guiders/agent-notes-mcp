@@ -23,7 +23,6 @@
     "archive-index-v1"
   ],
   "required_core_section_ids": [
-    "active-scope",
     "current-task"
   ]
 }
