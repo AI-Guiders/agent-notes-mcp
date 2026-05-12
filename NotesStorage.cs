@@ -23,11 +23,16 @@ public sealed class NotesStorage
         @"(?m)^\s*l0_manifest\s*:\s*(?<path>\S+)\s*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    /// <summary>Hot notes path: <c>AGENT_NOTES_FILE</c> if set; else <c>{AGENT_NOTES_CANON_PATH}/agent-notes.md</c> if canon env set; else <c>workspace_path/.cascade-ide/agent-notes.md</c>.</summary>
     public string GetNotesPath(string workspacePath)
     {
         var globalPath = Environment.GetEnvironmentVariable(EnvNotesFile);
         if (!string.IsNullOrWhiteSpace(globalPath))
             return Path.GetFullPath(globalPath.Trim());
+
+        var canonEnv = Environment.GetEnvironmentVariable(EnvCanonPath);
+        if (!string.IsNullOrWhiteSpace(canonEnv))
+            return Path.Combine(Path.GetFullPath(canonEnv.Trim()), NotesFileName);
 
         var root = Path.GetFullPath(workspacePath.Trim());
         if (File.Exists(root))

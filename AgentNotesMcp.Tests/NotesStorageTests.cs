@@ -212,6 +212,22 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
+    public void ReadWrite_UsesAgentNotesUnderCanonRoot_WhenCanonEnvSetAndNotesFileUnset()
+    {
+        using var ws = TempWorkspace.Create();
+        using var canon = TempCanon.Create();
+        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge"));
+        using var clearFile = EnvVarScope.Clear("AGENT_NOTES_FILE");
+        using var setCanon = EnvVarScope.Set("AGENT_NOTES_CANON_PATH", canon.CanonPath);
+        var storage = new NotesStorage();
+        var expectedNotes = Path.Combine(canon.CanonPath, "agent-notes.md");
+
+        Assert.Equal("OK", storage.Write(ws.WorkspacePath, "from-canon-env"));
+        Assert.Equal("from-canon-env", storage.Read(ws.WorkspacePath));
+        Assert.True(File.Exists(expectedNotes));
+    }
+
+    [Fact]
     public void EndToEnd_WriteUpsertSearchRollback_WorksAndCleansState()
     {
         using var temp = TempWorkspace.Create();
