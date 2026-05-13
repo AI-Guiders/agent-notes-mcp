@@ -15,7 +15,7 @@
 
 ## Реализованный контракт (код)
 
-0. **Bootstrap путей (опционально):** если под каноном есть **`knowledge/META/mcp-resolve-paths-v1.json`**, из него читаются относительные пути **`workspace_scope_map`** и **`scope_alias_map`** (только внутри `knowledge/`, без `..`). Невалидный JSON, отсутствующий файл или невалидные значения → в коде используются **дефолты** `work/local/workspace-scope-map-v1.md` и `work/local/scope-alias-map-v1.md`.
+0. **Bootstrap путей (опционально на диске):** если под каноном есть **`knowledge/META/mcp-resolve-paths-v1.json`**, из него читаются относительные пути **`workspace_scope_map`** и **`scope_alias_map`**. **Дефолты** берутся из **embedded** `mcp-resolve-paths-defaults.json` в сборке AgentNotes.Core (как hot-context defaults); при отсутствии/ошибке дискового JSON — остаются дефолты из ресурса. Невалидные значения в дисковом JSON → откат к тем же дефолтам.
 
 1. Если **`active_scope`** передан и не пустой — нормализация алиасов из файла по **`scope_alias_map`** (см. п.0). Встроенной таблицы в коде нет. Формат строк как у карты workspace: краткий ключ, затем `=>` / `:` / `=` и **канонический** id slice (совпадает с суффиксом секции `scope-<id>`). Строки-пути Windows в этот файл не кладутся (отфильтровываются).
 2. Иначе — **`TryResolveScopeFromWorkspaceMap`**: файл по **`workspace_scope_map`** (см. п.0); иначе содержимое секции **`workspace-scope-map-v1`** (fallback: legacy **`scope-map-v1`**); строки вида `path => scope`, самый длинный префикс пути к **`workspace_path`** выигрывает. Это **отдельная** ось: **путь → slice**, не алиасы коротких имён.

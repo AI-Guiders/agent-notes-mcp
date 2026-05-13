@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace AgentNotes.Core;
@@ -13,8 +12,6 @@ public sealed class NotesStorage
     private const string EnvNotesFile = "AGENT_NOTES_FILE";
     private const string RevisionsDirName = ".revisions";
     private const string KnowledgeDirName = "knowledge";
-    private const string DefaultWorkspaceScopeMapRelative = "work/local/workspace-scope-map-v1.md";
-    private const string DefaultScopeAliasMapRelative = "work/local/scope-alias-map-v1.md";
     private const string EnvCanonPath = "AGENT_NOTES_CANON_PATH";
     private const string MemoryArchitectureManifestKey = "l0_manifest";
 
@@ -106,20 +103,10 @@ public sealed class NotesStorage
         return true;
     }
 
-    private sealed class McpResolvePathsV1
-    {
-        [JsonPropertyName("workspace_scope_map")]
-        public string? WorkspaceScopeMap { get; set; }
-
-        [JsonPropertyName("scope_alias_map")]
-        public string? ScopeAliasMap { get; set; }
-    }
-
-    /// <summary>Optional bootstrap under canon: <c>knowledge/META/mcp-resolve-paths-v1.json</c> with relative paths inside <c>knowledge/</c>. Invalid or missing file → defaults.</summary>
+    /// <summary>Optional bootstrap under canon: <c>knowledge/META/mcp-resolve-paths-v1.json</c> with relative paths inside <c>knowledge/</c>. Invalid or missing file → defaults from embedded resource (<see cref="McpResolvePathsDefaults"/>).</summary>
     private static (string WorkspaceScopeMapRelative, string ScopeAliasMapRelative) ReadMcpResolvePathsOrDefaults(string canonRoot)
     {
-        (string WorkspaceScopeMapRelative, string ScopeAliasMapRelative) defaults =
-            (DefaultWorkspaceScopeMapRelative, DefaultScopeAliasMapRelative);
+        var defaults = McpResolvePathsDefaults.DefaultsPair;
         var configPath = Path.Combine(canonRoot, KnowledgeDirName, "META", "mcp-resolve-paths-v1.json");
         if (!File.Exists(configPath))
             return defaults;
@@ -127,7 +114,7 @@ public sealed class NotesStorage
         try
         {
             var json = File.ReadAllText(configPath, Encoding.UTF8);
-            var doc = JsonSerializer.Deserialize<McpResolvePathsV1>(json, new JsonSerializerOptions
+            var doc = JsonSerializer.Deserialize<McpResolvePathsConfigModel>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
                 ReadCommentHandling = JsonCommentHandling.Skip,
