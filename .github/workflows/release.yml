@@ -1,4 +1,4 @@
-# Зеркало agent-notes-core у того же owner (../agent-notes-core от csproj).
+# Исходники AgentNotes.Core: репо AIGuiders.AgentNotes.Core (рядом с csproj — ../agent-notes-core).
 name: Release
 
 on:
@@ -31,10 +31,9 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository_owner }}/agent-notes-core
+          repository: ${{ github.repository_owner }}/AIGuiders.AgentNotes.Core
           path: src/agent-notes-core
-          # GITHUB_TOKEN видит только текущий репо; для приватного core нужен PAT (секрет).
-          token: ${{ secrets.PRIVATE_DEPS_PAT }}
+          token: ${{ github.token }}
 
       - uses: actions/setup-dotnet@v4
         with:
