@@ -1,10 +1,10 @@
-# Сборка, релизы и CI (для держателей конвейера)
+# Сборка и релизы (PowerShell)
 
-Здесь — то, что нужно **тем, кто собирает артефакты и настраивает GitLab**, а не для первого знакомства с MCP. Публичный обзор — в корневом `README.md`.
+Здесь — **скрипты `.ps1`**, которыми собирают и при необходимости заливают артефакты. **Отдельного GitLab CI / пайплайна в эксплуатации нет** (файл `.gitlab-ci.yml` в репо может лежать как черновик или исторический хвост — ориентир по факту: только PowerShell). Публичный обзор MCP — в корневом `README.md`.
 
 ## Локальный publish (Windows)
 
-Скрипт **`publish-and-deploy.ps1`** в корне репо: self-contained `win-x64`, копирование в фиксированный каталог (по умолчанию `D:\agent-notes-mcp`), остановка процесса, если он держит файлы.
+**`publish-and-deploy.ps1`** в корне репо: self-contained `win-x64`, копирование в фиксированный каталог (по умолчанию `D:\agent-notes-mcp`), остановка процесса, если он держит файлы.
 
 ```powershell
 .\publish-and-deploy.ps1
@@ -16,19 +16,13 @@
 dotnet publish AgentNotesMcp.csproj -c Release -o publish
 ```
 
-В `AgentNotesMcp.csproj` заданы `SelfContained` и `win-x64` для типичного сценария; другой RID — `-r <rid>`. Кросс-сборка нескольких платформ с Windows — `scripts/publish-release-win.ps1`.
+В `AgentNotesMcp.csproj` заданы `SelfContained` и `win-x64` для типичного сценария; другой RID — `-r <rid>`.
 
-## Релиз Ubuntu 25.10 (GitLab CI)
+## Кросс-платформенный релиз с Windows (`publish-release-win.ps1`)
 
-Пайплайн на образе **ubuntu:25.10** для **linux-x64**: при push **тега** вида `v2026.03.22-ubuntu2510` собирается self-contained zip, job **release** создаёт GitLab Release с `agent-notes-mcp-linux-x64.zip`. На `main` без тега пайплайн не запускается (только по тегу `v*`).
+**`scripts/publish-release-win.ps1`** с машины на Windows собирает **win-x64**, **linux-x64**, **osx-x64** и заливает zip в **Generic Package** GitLab через HTTP API (не через job’ы CI).
 
-URL релизов зависит от инстанса GitLab, где подключён CI (см. `.gitlab-ci.yml` и настройки проекта).
-
-## Релизы с Windows (Generic Package / релиз в GitLab)
-
-Скрипт `scripts/publish-release-win.ps1` собирает **win-x64**, **linux-x64**, **osx-x64** и заливает zip в Generic Package.
-
-1. Переменные окружения: `GITLAB_URL` (базовый URL своего GitLab), `GITLAB_TOKEN` (PAT с `api`).
+1. Переменные окружения: `GITLAB_URL` (базовый URL инстанса GitLab), `GITLAB_TOKEN` (PAT с `api`).
 2. Примеры:
 
 ```powershell
@@ -37,6 +31,8 @@ URL релизов зависит от инстанса GitLab, где подк�
 .\scripts\publish-release-win.ps1 -Version 2026.03.08 -Rids win-x64,linux-x64 -CreateRelease
 ```
 
+По умолчанию собираются все три платформы; при ошибке одной остальные всё равно могут быть залиты (см. поведение в скрипте).
+
 ## Несколько remote (зеркала)
 
-Если нужен один `origin` с несколькими push-URL и отдельный `github`, настройка зависит от хостов команды — не фиксируется в публичном README; см. внутреннюю wiki или операционные заметки канона.
+Если нужен один `origin` с несколькими push-URL и отдельный `github`, настройка зависит от хостов команды — см. внутреннюю wiki или операционные заметки канона.
