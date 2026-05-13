@@ -19,7 +19,7 @@ internal static class ToolCatalog
                 properties = new
                 {
                     workspace_path = new { type = "string", description = "Каталог workspace." },
-                    active_scope = new { type = "string", description = "Опционально: door-to-singularity | portal | mixed (алиасы: dts, cp; ptl→portal; legacy: current-projects)." }
+                    active_scope = new { type = "string", description = "Опционально: door-to-singularity | portal | harvester | imc | mixed (алиасы: dts, cp; ptl→portal; hrv→harvester; legacy: current-projects)." }
                 },
                 required = new[] { "workspace_path" }
             })
@@ -35,7 +35,7 @@ internal static class ToolCatalog
                 {
                     workspace_path = new { type = "string", description = "Каталог workspace." },
                     query = new { type = "string", description = "Поисковый запрос или задача для маршрутизации контекста." },
-                    active_scope = new { type = "string", description = "Опционально: door-to-singularity | portal | mixed (алиасы: dts, cp; ptl→portal; legacy: current-projects)." },
+                    active_scope = new { type = "string", description = "Опционально: door-to-singularity | portal | harvester | imc | mixed (алиасы: dts, cp; ptl→portal; hrv→harvester; legacy: current-projects)." },
                     max_sections = new { type = "integer", description = "Максимум секций в ответе (по умолчанию 5)." },
                     max_chars = new { type = "integer", description = "Бюджет символов для assembled_context (по умолчанию 12000)." }
                 },
@@ -96,7 +96,7 @@ internal static class ToolCatalog
                 properties = new
                 {
                     workspace_path = new { type = "string", description = "Каталог workspace." },
-                    active_scope = new { type = "string", description = "Опционально: door-to-singularity | portal | mixed (алиасы: dts, cp; ptl→portal; legacy: current-projects)." }
+                    active_scope = new { type = "string", description = "Опционально: door-to-singularity | portal | harvester | imc | mixed (алиасы: dts, cp; ptl→portal; hrv→harvester; legacy: current-projects)." }
                 },
                 required = new[] { "workspace_path" }
             })

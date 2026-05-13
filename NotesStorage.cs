@@ -385,13 +385,14 @@ public sealed class NotesStorage
             return "";
 
         var sections = ParseSections(notes);
-        var resolvedScope = ResolveScope(activeScope, sections, workspacePath);
+        var scopeAliases = LoadScopeAliasesMerged();
+        var resolvedScope = ResolveScope(activeScope, sections, workspacePath, scopeAliases);
 
         var notesPath = GetNotesPath(workspacePath);
         var manifest = LoadMemoryArchitectureManifest(sections, notesPath);
         var l0 = ResolveL0Ids(sections, notesPath, manifest);
         var priorityIds = (l0 ?? HotContextDefaults.DefaultL0Ids).ToList();
-        var scopeId = ResolveScopeSectionId(resolvedScope, sections);
+        var scopeId = ResolveScopeSectionId(resolvedScope, sections, scopeAliases);
         priorityIds.Add(scopeId);
 
         var loaded = new List<string>();
@@ -422,8 +423,9 @@ public sealed class NotesStorage
         var notesPath = GetNotesPath(workspacePath);
         var notes = Read(workspacePath);
         var sections = ParseSections(notes);
-        var resolvedScope = ResolveScope(activeScope, sections, workspacePath);
-        var hotSectionIds = BuildHotSectionIds(resolvedScope, sections, notesPath);
+        var scopeAliases = LoadScopeAliasesMerged();
+        var resolvedScope = ResolveScope(activeScope, sections, workspacePath, scopeAliases);
+        var hotSectionIds = BuildHotSectionIds(resolvedScope, sections, notesPath, scopeAliases);
         var hotSections = hotSectionIds
             .Where(sections.ContainsKey)
             .Select(id => new
@@ -528,9 +530,10 @@ public sealed class NotesStorage
             }, new JsonSerializerOptions { WriteIndented = true });
 
         var sections = ParseSections(notes);
-        var resolvedScope = ResolveScope(activeScope, sections, workspacePath);
+        var scopeAliases = LoadScopeAliasesMerged();
+        var resolvedScope = ResolveScope(activeScope, sections, workspacePath, scopeAliases);
         var notesPath = GetNotesPath(workspacePath);
-        var hotSectionIds = BuildHotSectionIds(resolvedScope, sections, notesPath);
+        var hotSectionIds = BuildHotSectionIds(resolvedScope, sections, notesPath, scopeAliases);
         var boosted = hotSectionIds
             .Select((id, idx) => (id, bonus: Math.Max(0, 30 - idx * 2)))
             .ToDictionary(x => x.id, x => x.bonus, StringComparer.Ordinal);
@@ -977,12 +980,12 @@ public sealed class NotesStorage
         return LoadMemoryArchitectureManifest(sections, notesPath)?.CompactOrderSuffix;
     }
 
-    private static string[] BuildHotSectionIds(string resolvedScope, IReadOnlyDictionary<string, string> sections, string notesPath)
+    private static string[] BuildHotSectionIds(string resolvedScope, IReadOnlyDictionary<string, string> sections, string notesPath, IReadOnlyDictionary<string, string> scopeAliases)
     {
         var manifest = LoadMemoryArchitectureManifest(sections, notesPath);
         var l0 = ResolveL0Ids(sections, notesPath, manifest);
         var ids = (l0 ?? HotContextDefaults.DefaultL0Ids).ToList();
-        ids.Add(ResolveScopeSectionId(resolvedScope, sections));
+        ids.Add(ResolveScopeSectionId(resolvedScope, sections, scopeAliases));
         return ids.Where(id => !IsHotExcluded(id, manifest?.HotContextSectionExclusions)).Distinct(StringComparer.Ordinal).ToArray();
     }
 
@@ -1023,35 +1026,85 @@ public sealed class NotesStorage
         return normalized[..maxChars] + "...";
     }
 
-    /// <summary>Maps legacy and shorthand scope names to canonical ids (active-scope / MCP active_scope).</summary>
-    private static string NormalizeScope(string scope)
+    /// <summary>Reads <c>knowledge/work/local/scope-alias-map-v1.md</c> under canon (same layer as workspace-scope-map). No hardcoded alias table in code.</summary>
+    private static IReadOnlyDictionary<string, string> LoadScopeAliasesMerged()
     {
-        var s = scope.Trim().ToLowerInvariant();
-        return s switch
+        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        try
         {
-            "current-projects" or "dts" or "cp" => "door-to-singularity",
-            "ptl" => "portal",
-            _ => s
-        };
+            var root = ResolveCanonPath(null);
+            MergeScopeAliasFile(Path.Combine(root, KnowledgeDirName, "work", "local", "scope-alias-map-v1.md"), dict);
+        }
+        catch (ArgumentException)
+        {
+            // Canon cannot be resolved — no alias file (e.g. misconfigured env in edge cases).
+        }
+        catch (IOException)
+        {
+        }
+
+        return dict;
     }
 
-    private static string ResolveScope(string? requestedScope, IReadOnlyDictionary<string, string> sections, string workspacePath)
+    private static void MergeScopeAliasFile(string path, IDictionary<string, string> sink)
+    {
+        if (!File.Exists(path))
+            return;
+
+        var text = File.ReadAllText(path, Encoding.UTF8);
+        foreach (var line in text.Replace("\r\n", "\n").Split('\n'))
+        {
+            var parsed = ParseScopeMapLine(line);
+            if (parsed is null || !LooksLikeScopeAliasKey(parsed.Value.Item1))
+                continue;
+
+            var alias = parsed.Value.Item1.Trim().ToLowerInvariant();
+            var canonical = parsed.Value.Item2.Trim().ToLowerInvariant();
+            if (alias.Length != 0 && canonical.Length != 0)
+                sink[alias] = canonical;
+        }
+    }
+
+    /// <summary>Alias keys must be single tokens — not filesystem paths (<c>c:\...</c>). Workspace lines in a mis-placed alias file are ignored.</summary>
+    private static bool LooksLikeScopeAliasKey(string key)
+    {
+        var t = key.Trim();
+        if (t.Length == 0)
+            return false;
+        foreach (var c in t)
+        {
+            if (char.IsLetterOrDigit(c) || c is '.' or '_' or '-')
+                continue;
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>Maps legacy shorthand to canonical ids when defined in merged alias dictionary.</summary>
+    private static string NormalizeScope(string scope, IReadOnlyDictionary<string, string> aliases)
+    {
+        var s = scope.Trim().ToLowerInvariant();
+        return aliases.TryGetValue(s, out var mapped) ? mapped : s;
+    }
+
+    private static string ResolveScope(string? requestedScope, IReadOnlyDictionary<string, string> sections, string workspacePath, IReadOnlyDictionary<string, string> aliases)
     {
         if (!string.IsNullOrWhiteSpace(requestedScope))
-            return NormalizeScope(requestedScope);
+            return NormalizeScope(requestedScope, aliases);
 
         var mappedScope = TryResolveScopeFromWorkspaceMap(workspacePath, sections);
         if (!string.IsNullOrWhiteSpace(mappedScope))
-            return NormalizeScope(mappedScope);
+            return NormalizeScope(mappedScope, aliases);
 
         if (!sections.TryGetValue("active-scope", out var activeScopeContent))
-            return "door-to-singularity";
+            return NormalizeScope("door-to-singularity", aliases);
 
         var match = Regex.Match(activeScopeContent, @"current\s*:\s*(?<scope>[A-Za-z0-9._-]+)", RegexOptions.IgnoreCase);
         var raw = match.Success
             ? match.Groups["scope"].Value.Trim().ToLowerInvariant()
             : "door-to-singularity";
-        return NormalizeScope(raw);
+        return NormalizeScope(raw, aliases);
     }
 
     private static string? TryResolveScopeFromWorkspaceMap(string workspacePath, IReadOnlyDictionary<string, string> sections)
@@ -1153,12 +1206,12 @@ public sealed class NotesStorage
         return "scope-door-to-singularity";
     }
 
-    private static string ResolveScopeSectionId(string resolvedScope, IReadOnlyDictionary<string, string> sections)
+    private static string ResolveScopeSectionId(string resolvedScope, IReadOnlyDictionary<string, string> sections, IReadOnlyDictionary<string, string> aliases)
     {
         if (string.IsNullOrWhiteSpace(resolvedScope))
             return ResolveDtsDefaultSectionId(sections);
 
-        var normalizedScope = NormalizeScope(resolvedScope.Trim());
+        var normalizedScope = NormalizeScope(resolvedScope.Trim(), aliases);
         var genericScopeId = $"scope-{normalizedScope}";
         if (sections.ContainsKey(genericScopeId))
             return genericScopeId;

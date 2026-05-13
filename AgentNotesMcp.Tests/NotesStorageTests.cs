@@ -8,6 +8,24 @@ namespace AgentNotesMcp.Tests;
 
 public sealed class NotesStorageTests
 {
+    /// <summary>Must stay in sync with agent-notes <c>knowledge/work/local/scope-alias-map-v1.md</c> (tests seed this file whenever a temp canon root is created).</summary>
+    private const string TestScopeAliasesMd =
+        """
+        current-projects => door-to-singularity
+        dts => door-to-singularity
+        cp => door-to-singularity
+        ptl => portal
+        hrv => harvester
+        """;
+
+    private static void SeedTestScopeAliasDefaults(string canonTreeRoot)
+    {
+        var local = Path.Combine(canonTreeRoot, "knowledge", "work", "local");
+        Directory.CreateDirectory(local);
+        var path = Path.Combine(local, "scope-alias-map-v1.md");
+        if (!File.Exists(path))
+            File.WriteAllText(path, TestScopeAliasesMd.Trim() + Environment.NewLine, Encoding.UTF8);
+    }
     [Fact]
     public void UpsertSection_CreatesAndUpdatesWithoutDuplicates()
     {
@@ -483,6 +501,7 @@ ok
             Directory.CreateDirectory(workspace);
             var notesDir = Path.Combine(root, "notes");
             Directory.CreateDirectory(notesDir);
+            SeedTestScopeAliasDefaults(root);
             var notesFile = Path.Combine(notesDir, "agent-notes.md");
             return new TempWorkspace(root, workspace, notesFile);
         }
@@ -514,6 +533,7 @@ ok
         {
             var path = Path.Combine(Path.GetTempPath(), "AgentNotesMcpTests", "canon", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(path);
+            SeedTestScopeAliasDefaults(path);
             return new TempCanon(path);
         }
 
