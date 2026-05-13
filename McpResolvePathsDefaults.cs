@@ -3,11 +3,9 @@ using System.Text.Json.Serialization;
 
 namespace AgentNotes.Core;
 
-/// <summary>Дефолтные относительные пути для резолва workspace → scope и алиасов scope: из embedded <c>mcp-resolve-paths-defaults.json</c> (как hot-context в CIDE / AgentNotes.Core), с резервом в коде если ресурс отсутствует или JSON битый.</summary>
+/// <summary>Дефолтные относительные пути для workspace → scope и алиасов: embedded JSON (<see cref="BundledAgentNotesContent"/> + <c>Resources/mcp-resolve-paths-defaults.json</c>). Литералы в коде — только если ресурс не читается или JSON не парсится / не проходит валидацию путей.</summary>
 internal static class McpResolvePathsDefaults
 {
-    private const string EmbeddedResourceSuffix = "mcp-resolve-paths-defaults.json";
-
     private static readonly Lazy<(string WorkspaceScopeMapRelative, string ScopeAliasMapRelative)> Pair = new(Load);
 
     public static (string WorkspaceScopeMapRelative, string ScopeAliasMapRelative) DefaultsPair => Pair.Value;
@@ -21,29 +19,22 @@ internal static class McpResolvePathsDefaults
 
     private static (string, string) Load()
     {
-        var assembly = typeof(McpResolvePathsDefaults).Assembly;
-        var resourceName = assembly.GetManifestResourceNames()
-            .FirstOrDefault(n => n.EndsWith(EmbeddedResourceSuffix, StringComparison.Ordinal));
-        if (resourceName is not null)
+        if (!BundledAgentNotesContent.TryReadEmbeddedText("mcp-resolve-paths-defaults.json", out var text))
+            return HardcodedFallback.Pair;
+
+        try
         {
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            if (stream is not null)
+            var dto = JsonSerializer.Deserialize<McpResolvePathsConfigModel>(text, JsonOptions);
+            if (dto is not null
+                && TryValidateKnowledgePath(dto.WorkspaceScopeMap, out var ws)
+                && TryValidateKnowledgePath(dto.ScopeAliasMap, out var al))
             {
-                try
-                {
-                    var dto = JsonSerializer.Deserialize<McpResolvePathsConfigModel>(stream, JsonOptions);
-                    if (dto is not null
-                        && TryValidateKnowledgePath(dto.WorkspaceScopeMap, out var ws)
-                        && TryValidateKnowledgePath(dto.ScopeAliasMap, out var al))
-                    {
-                        return (ws, al);
-                    }
-                }
-                catch
-                {
-                    // fall through to hardcoded fallback
-                }
+                return (ws, al);
             }
+        }
+        catch
+        {
+            // fall through to hardcoded fallback
         }
 
         return HardcodedFallback.Pair;

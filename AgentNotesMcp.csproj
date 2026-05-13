@@ -28,7 +28,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="BundledAgentNotesContent.cs" />
+    <Compile Remove="HotContextDefaults.cs" />
+    <Compile Remove="McpResolvePathsDefaults.cs" />
     <Compile Remove="NotesStorage.cs" />
+    <Compile Remove="NotesStorage.HotContextRouting.cs" />
+    <Compile Remove="NotesStorage.MemoryArchitecture.cs" />
+    <Compile Remove="NotesStorage.Scope.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -4,12 +4,10 @@ using System.Text.Json.Serialization;
 namespace AgentNotes.Core;
 
 /// <summary>Значения по умолчанию для hot-context: бюджеты, списки секций, блоклист тяжёлых L1.
-/// Списки L0 / compact suffix / core — из встроенного ресурса <c>hot-context-defaults.json</c> (см. <c>Resources/</c> в репо).
+/// Списки L0 / compact suffix / core — из embedded JSON в сборке AgentNotes.Core (<see cref="BundledAgentNotesContent"/> + <c>Resources/hot-context-defaults.json</c>, как <c>BundledAppContent</c> в CascadeIDE).
 /// Переопределение рабочей памяти через <c>memory-architecture-v1</c> JSON (см. <see cref="MemoryArchitectureManifestData"/>).</summary>
 internal static class HotContextDefaults
 {
-    private const string EmbeddedResourceSuffix = "hot-context-defaults.json";
-
     /// <summary>Порог предупреждения <c>memory_health</c> (сумма символов hot-секций).</summary>
     public const int HotContextBudgetWarningChars = 6000;
 
@@ -39,30 +37,23 @@ internal static class HotContextDefaults
 
     private static HotContextEmbeddedLists LoadLists()
     {
-        var assembly = typeof(HotContextDefaults).Assembly;
-        var resourceName = assembly.GetManifestResourceNames()
-            .FirstOrDefault(n => n.EndsWith(EmbeddedResourceSuffix, StringComparison.Ordinal));
-        if (resourceName is not null)
+        if (!BundledAgentNotesContent.TryReadEmbeddedText("hot-context-defaults.json", out var text))
+            return HardcodedFallbackLists.Instance;
+
+        try
         {
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            if (stream is not null)
+            var dto = JsonSerializer.Deserialize<HotContextDefaultsDto>(text, JsonOptions);
+            if (dto is not null
+                && dto.DefaultL0Ids is { Length: > 0 }
+                && dto.DefaultCompactOrderSuffix is { Length: > 0 }
+                && dto.RequiredCoreSectionIds is { Length: > 0 })
             {
-                try
-                {
-                    var dto = JsonSerializer.Deserialize<HotContextDefaultsDto>(stream, JsonOptions);
-                    if (dto is not null
-                        && dto.DefaultL0Ids is { Length: > 0 }
-                        && dto.DefaultCompactOrderSuffix is { Length: > 0 }
-                        && dto.RequiredCoreSectionIds is { Length: > 0 })
-                    {
-                        return new HotContextEmbeddedLists(dto.DefaultL0Ids, dto.DefaultCompactOrderSuffix, dto.RequiredCoreSectionIds);
-                    }
-                }
-                catch
-                {
-                    // fall through to hardcoded fallback
-                }
+                return new HotContextEmbeddedLists(dto.DefaultL0Ids, dto.DefaultCompactOrderSuffix, dto.RequiredCoreSectionIds);
             }
+        }
+        catch
+        {
+            // fall through to hardcoded fallback
         }
 
         return HardcodedFallbackLists.Instance;
@@ -92,7 +83,7 @@ internal static class HotContextDefaults
         string[] DefaultCompactOrderSuffix,
         string[] RequiredCoreSectionIds);
 
-    /// <summary>Последний резерв, если ресурс не найден или JSON битый (не дублирует длину списков в JSON-файле).</summary>
+    /// <summary>Последний резерв: поток embedded не открылся (сборка/имя ресурса) или JSON внутри сборки не парсится / пустые списки. Не дублирует полный объём списков из JSON в репо.</summary>
     private static class HardcodedFallbackLists
     {
         internal static readonly HotContextEmbeddedLists Instance = new(
