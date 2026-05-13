@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace AgentNotes.Core;
@@ -12,6 +13,8 @@ public sealed class NotesStorage
     private const string EnvNotesFile = "AGENT_NOTES_FILE";
     private const string RevisionsDirName = ".revisions";
     private const string KnowledgeDirName = "knowledge";
+    private const string DefaultWorkspaceScopeMapRelative = "work/local/workspace-scope-map-v1.md";
+    private const string DefaultScopeAliasMapRelative = "work/local/scope-alias-map-v1.md";
     private const string EnvCanonPath = "AGENT_NOTES_CANON_PATH";
     private const string MemoryArchitectureManifestKey = "l0_manifest";
 
@@ -83,12 +86,71 @@ public sealed class NotesStorage
     /// <summary>Validate relative path under knowledge/: no "..", no leading slash. Returns normalized relative path.</summary>
     private static string ValidateKnowledgeRelativePath(string filePath)
     {
-        var normalized = filePath.Replace('\\', '/').TrimStart('/');
-        if (normalized.Contains("..", StringComparison.Ordinal) || Path.IsPathRooted(normalized))
-            throw new ArgumentException("file_path must be a relative path under knowledge/ (no '..', no absolute path).");
-        if (string.IsNullOrWhiteSpace(normalized))
+        if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("file_path is required.");
+        if (!TryValidateKnowledgeRelativePath(filePath, out var normalized))
+            throw new ArgumentException("file_path must be a relative path under knowledge/ (no '..', no absolute path).");
         return normalized;
+    }
+
+    /// <summary>Returns false if <paramref name="filePath"/> is empty, rooted, or contains <c>..</c>.</summary>
+    private static bool TryValidateKnowledgeRelativePath(string filePath, out string normalized)
+    {
+        normalized = filePath.Replace('\\', '/').TrimStart('/');
+        if (string.IsNullOrWhiteSpace(normalized) || normalized.Contains("..", StringComparison.Ordinal) || Path.IsPathRooted(normalized))
+        {
+            normalized = "";
+            return false;
+        }
+
+        return true;
+    }
+
+    private sealed class McpResolvePathsV1
+    {
+        [JsonPropertyName("workspace_scope_map")]
+        public string? WorkspaceScopeMap { get; set; }
+
+        [JsonPropertyName("scope_alias_map")]
+        public string? ScopeAliasMap { get; set; }
+    }
+
+    /// <summary>Optional bootstrap under canon: <c>knowledge/META/mcp-resolve-paths-v1.json</c> with relative paths inside <c>knowledge/</c>. Invalid or missing file → defaults.</summary>
+    private static (string WorkspaceScopeMapRelative, string ScopeAliasMapRelative) ReadMcpResolvePathsOrDefaults(string canonRoot)
+    {
+        (string WorkspaceScopeMapRelative, string ScopeAliasMapRelative) defaults =
+            (DefaultWorkspaceScopeMapRelative, DefaultScopeAliasMapRelative);
+        var configPath = Path.Combine(canonRoot, KnowledgeDirName, "META", "mcp-resolve-paths-v1.json");
+        if (!File.Exists(configPath))
+            return defaults;
+
+        try
+        {
+            var json = File.ReadAllText(configPath, Encoding.UTF8);
+            var doc = JsonSerializer.Deserialize<McpResolvePathsV1>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                ReadCommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true
+            });
+            if (doc is null)
+                return defaults;
+
+            var ws = string.IsNullOrWhiteSpace(doc.WorkspaceScopeMap) ? defaults.WorkspaceScopeMapRelative : doc.WorkspaceScopeMap.Trim();
+            var al = string.IsNullOrWhiteSpace(doc.ScopeAliasMap) ? defaults.ScopeAliasMapRelative : doc.ScopeAliasMap.Trim();
+            if (!TryValidateKnowledgeRelativePath(ws, out var wsNorm) || !TryValidateKnowledgeRelativePath(al, out var alNorm))
+                return defaults;
+
+            return (wsNorm, alNorm);
+        }
+        catch (JsonException)
+        {
+            return defaults;
+        }
+        catch (IOException)
+        {
+            return defaults;
+        }
     }
 
     public string GetKnowledgeFilePath(string? canonPath, string filePath)
@@ -1026,14 +1088,15 @@ public sealed class NotesStorage
         return normalized[..maxChars] + "...";
     }
 
-    /// <summary>Reads <c>knowledge/work/local/scope-alias-map-v1.md</c> under canon (same layer as workspace-scope-map). No hardcoded alias table in code.</summary>
+    /// <summary>Reads scope alias file under canon (path from <c>knowledge/META/mcp-resolve-paths-v1.json</c> or defaults). No hardcoded alias table in code.</summary>
     private static IReadOnlyDictionary<string, string> LoadScopeAliasesMerged()
     {
         var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         try
         {
             var root = ResolveCanonPath(null);
-            MergeScopeAliasFile(Path.Combine(root, KnowledgeDirName, "work", "local", "scope-alias-map-v1.md"), dict);
+            var (_, aliasRel) = ReadMcpResolvePathsOrDefaults(root);
+            MergeScopeAliasFile(Path.Combine(root, KnowledgeDirName, aliasRel.Replace('/', Path.DirectorySeparatorChar)), dict);
         }
         catch (ArgumentException)
         {
@@ -1149,13 +1212,14 @@ public sealed class NotesStorage
         return bestScope;
     }
 
-    /// <summary>Optional map lines (same format as hot section): <c>knowledge/work/local/workspace-scope-map-v1.md</c> under canon root. Overrides empty/missing hot sections when <see cref="ResolveCanonPath"/> succeeds.</summary>
+    /// <summary>Optional map lines (same format as hot section): file under canon from <c>knowledge/META/mcp-resolve-paths-v1.json</c> or default <c>work/local/workspace-scope-map-v1.md</c>. Overrides empty/missing hot sections when <see cref="ResolveCanonPath"/> succeeds.</summary>
     private static string? TryLoadWorkspaceScopeMapFromWorkLocal()
     {
         try
         {
             var root = ResolveCanonPath(null);
-            var path = Path.Combine(root, "knowledge", "work", "local", "workspace-scope-map-v1.md");
+            var (workspaceRel, _) = ReadMcpResolvePathsOrDefaults(root);
+            var path = Path.Combine(root, KnowledgeDirName, workspaceRel.Replace('/', Path.DirectorySeparatorChar));
             if (!File.Exists(path))
                 return null;
             return File.ReadAllText(path, Encoding.UTF8);

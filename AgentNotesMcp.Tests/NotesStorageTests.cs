@@ -297,6 +297,72 @@ ok
     }
 
     [Fact]
+    public void MemoryHealth_UsesWorkspaceScopeMapFromMcpResolvePathsConfig_WhenCustomRelativePath()
+    {
+        using var ws = TempWorkspace.Create();
+        using var canon = TempCanon.Create();
+        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge", "META"));
+        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge", "work", "custom-maps"));
+        var configPath = Path.Combine(canon.CanonPath, "knowledge", "META", "mcp-resolve-paths-v1.json");
+        File.WriteAllText(
+            configPath,
+            """
+            {
+              "version": 1,
+              "workspace_scope_map": "work/custom-maps/my-ws-map.md",
+              "scope_alias_map": "work/local/scope-alias-map-v1.md"
+            }
+            """.Trim(),
+            Encoding.UTF8);
+        var mapPath = Path.Combine(canon.CanonPath, "knowledge", "work", "custom-maps", "my-ws-map.md");
+        File.WriteAllText(mapPath, $"{Path.GetFullPath(ws.WorkspacePath)} => portal\n", Encoding.UTF8);
+        SeedTestScopeAliasDefaults(canon.CanonPath);
+
+        using var clearFile = EnvVarScope.Clear("AGENT_NOTES_FILE");
+        using var setCanon = EnvVarScope.Set("AGENT_NOTES_CANON_PATH", canon.CanonPath);
+        var storage = new NotesStorage();
+
+        const string notesContent = """
+<!-- section:current-task -->
+ok
+<!-- /section:current-task -->
+""";
+        Assert.Equal("OK", storage.Write(ws.WorkspacePath, notesContent));
+
+        var json = storage.MemoryHealth(ws.WorkspacePath, null);
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal("portal", doc.RootElement.GetProperty("resolved_scope").GetString());
+    }
+
+    [Fact]
+    public void MemoryHealth_IgnoresInvalidMcpResolvePathsJson_AndUsesDefaultWorkspaceMap()
+    {
+        using var ws = TempWorkspace.Create();
+        using var canon = TempCanon.Create();
+        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge", "META"));
+        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge", "work", "local"));
+        File.WriteAllText(Path.Combine(canon.CanonPath, "knowledge", "META", "mcp-resolve-paths-v1.json"), "{ not-json", Encoding.UTF8);
+        var mapPath = Path.Combine(canon.CanonPath, "knowledge", "work", "local", "workspace-scope-map-v1.md");
+        File.WriteAllText(mapPath, $"{Path.GetFullPath(ws.WorkspacePath)} => portal\n", Encoding.UTF8);
+        SeedTestScopeAliasDefaults(canon.CanonPath);
+
+        using var clearFile = EnvVarScope.Clear("AGENT_NOTES_FILE");
+        using var setCanon = EnvVarScope.Set("AGENT_NOTES_CANON_PATH", canon.CanonPath);
+        var storage = new NotesStorage();
+
+        const string notesContent = """
+<!-- section:current-task -->
+ok
+<!-- /section:current-task -->
+""";
+        Assert.Equal("OK", storage.Write(ws.WorkspacePath, notesContent));
+
+        var json = storage.MemoryHealth(ws.WorkspacePath, null);
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal("portal", doc.RootElement.GetProperty("resolved_scope").GetString());
+    }
+
+    [Fact]
     public void MemoryHealth_ReportsWarning_WhenHotContextIsTooLarge()
     {
         using var temp = TempWorkspace.Create();
