@@ -45,13 +45,13 @@ internal static class ToolCatalog
         new()
         {
             Name = "write_agent_notes",
-            Description = "Записать заметки агента (полная замена файла). Агент сам решает, когда, что и в каком формате сохранять. Путь: AGENT_NOTES_FILE (если задана) → иначе при AGENT_NOTES_CANON_PATH: {канон}/agent-notes.md → иначе workspace_path/.cascade-ide/agent-notes.md. ВНИМАНИЕ: перезаписывает файл целиком; для добавления блока без риска стереть остальное используйте append_agent_notes.",
+            Description = "Записать заметки агента (полная замена файла). Путь hot-файла: primary knowledge root из --config → {корень}/agent-notes.md; иначе workspace_path/.cascade-ide/agent-notes.md. ВНИМАНИЕ: перезаписывает файл целиком; для добавления блока без риска стереть остальное используйте append_agent_notes.",
             InputSchema = Schema(new
             {
                 type = "object",
                 properties = new
                 {
-                    workspace_path = new { type = "string", description = "Каталог workspace (например корень проекта в Cursor). Нужен для резолва scope и для пути к agent-notes.md, если не заданы AGENT_NOTES_FILE и AGENT_NOTES_CANON_PATH (тогда файл под workspace_path/.cascade-ide/)." },
+                    workspace_path = new { type = "string", description = "Каталог workspace (например корень проекта в Cursor). Нужен для резолва scope; hot-файл — из --config (primary root) или workspace_path/.cascade-ide/agent-notes.md." },
                     content = new { type = "string", description = "Полное содержимое заметок (перезаписывает файл целиком)." }
                 },
                 required = new[] { "workspace_path", "content" }
@@ -60,7 +60,7 @@ internal static class ToolCatalog
         new()
         {
             Name = "append_agent_notes",
-            Description = "Добавить блок в конец заметок агента без перезаписи файла. Безопасно: не трогает существующее содержимое. Путь: AGENT_NOTES_FILE → иначе {AGENT_NOTES_CANON_PATH}/agent-notes.md → иначе workspace_path/.cascade-ide/agent-notes.md. Рекомендуется для добавления своего блока (Claude, Composer, другой агент), чтобы не стереть заметки других.",
+            Description = "Добавить блок в конец заметок агента без перезаписи файла. Путь hot-файла: primary knowledge root из --config → {корень}/agent-notes.md; иначе workspace_path/.cascade-ide/agent-notes.md.",
             InputSchema = Schema(new
             {
                 type = "object",
@@ -75,7 +75,7 @@ internal static class ToolCatalog
         new()
         {
             Name = "read_agent_notes",
-            Description = "Прочитать заметки агента. Путь: AGENT_NOTES_FILE → иначе {AGENT_NOTES_CANON_PATH}/agent-notes.md → иначе workspace_path/.cascade-ide/agent-notes.md. Возвращает содержимое или пустую строку. Агент восстанавливает контекст в новом чате.",
+            Description = "Прочитать заметки агента. Путь hot-файла: primary knowledge root из --config → {корень}/agent-notes.md; иначе workspace_path/.cascade-ide/agent-notes.md. Возвращает содержимое или пустую строку.",
             InputSchema = Schema(new
             {
                 type = "object",
@@ -104,7 +104,7 @@ internal static class ToolCatalog
         new()
         {
             Name = "upsert_agent_notes_section",
-            Description = "Точечно вставить/обновить секцию заметок по section_id без полной перезаписи файла. Секция оформляется маркерами <!-- section:ID --> ... <!-- /section:ID -->. Путь: AGENT_NOTES_FILE → иначе {AGENT_NOTES_CANON_PATH}/agent-notes.md → иначе workspace_path/.cascade-ide/agent-notes.md.",
+            Description = "Точечно вставить/обновить секцию заметок по section_id без полной перезаписи файла. Секция оформляется маркерами <!-- section:ID --> ... <!-- /section:ID -->. Путь hot-файла — как у read_agent_notes.",
             InputSchema = Schema(new
             {
                 type = "object",
@@ -199,13 +199,13 @@ internal static class ToolCatalog
         new()
         {
             Name = "write_knowledge_file",
-            Description = "Записать файл в каталог knowledge/ канона (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Путь к канону: canon_path, иначе AGENT_NOTES_CANON_PATH, иначе вывод из AGENT_NOTES_FILE (см. ResolveCanonPath).",
+            Description = "Записать файл в каталог knowledge/ (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Корень KB: knowledge_path или primary из --config.",
             InputSchema = Schema(new
             {
                 type = "object",
                 properties = new
                 {
-                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH или корень выводится из AGENT_NOTES_FILE (см. ResolveCanonPath)." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например kb-music-acoustics-v1.md (без '..' и без абсолютного пути)." },
                     content = new { type = "string", description = "Полное содержимое файла." },
                     save_revision = new { type = "boolean", description = "Сохранить текущую версию в knowledge/.revisions/ перед записью (по умолчанию true)." }
@@ -216,13 +216,13 @@ internal static class ToolCatalog
         new()
         {
             Name = "append_knowledge_file",
-            Description = "Добавить блок в конец файла в knowledge/ канона без перезаписи. Перед добавлением текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true).",
+            Description = "Добавить блок в конец файла в knowledge/ без перезаписи. Перед добавлением текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true).",
             InputSchema = Schema(new
             {
                 type = "object",
                 properties = new
                 {
-                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH или корень выводится из AGENT_NOTES_FILE (см. ResolveCanonPath)." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/." },
                     content = new { type = "string", description = "Текст для добавления в конец файла (перед ним при необходимости добавляется перевод строки)." },
                     save_revision = new { type = "boolean", description = "Сохранить текущую версию в knowledge/.revisions/ перед добавлением (по умолчанию true)." }
@@ -239,7 +239,7 @@ internal static class ToolCatalog
                 type = "object",
                 properties = new
                 {
-                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH или корень выводится из AGENT_NOTES_FILE (см. ResolveCanonPath)." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например index-knowledge-router-v1.md." },
                     section_id = new { type = "string", description = "Стабильный ID секции (A-Za-z0-9._-)." },
                     content = new { type = "string", description = "Новое содержимое секции." },
@@ -251,13 +251,13 @@ internal static class ToolCatalog
         new()
         {
             Name = "delete_knowledge_file",
-            Description = "Удалить файл из каталога knowledge/ канона. file_path — относительный путь (без '..'). Если файла нет — NO_CHANGES.",
+            Description = "Удалить файл из каталога knowledge/. file_path — относительный путь (без '..'). Если файла нет — NO_CHANGES.",
             InputSchema = Schema(new
             {
                 type = "object",
                 properties = new
                 {
-                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH или корень выводится из AGENT_NOTES_FILE (см. ResolveCanonPath)." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например mcp-test-irl.md." }
                 },
                 required = new[] { "file_path" }
@@ -272,7 +272,7 @@ internal static class ToolCatalog
                 type = "object",
                 properties = new
                 {
-                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH или корень выводится из AGENT_NOTES_FILE (см. ResolveCanonPath)." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/." },
                     section_id = new { type = "string", description = "ID секции для удаления (A-Za-z0-9._-)." }
                 },
@@ -282,13 +282,13 @@ internal static class ToolCatalog
         new()
         {
             Name = "read_knowledge_file",
-            Description = "Прочитать файл из каталога knowledge/ канона. Путь к канону: аргумент canon_path, иначе AGENT_NOTES_CANON_PATH, иначе вывод из AGENT_NOTES_FILE (см. ResolveCanonPath). Возвращает содержимое или пустую строку, если файла нет. Опционально offset (номер первой возвращаемой строки, 1-based, как в редакторе) и limit (макс. число строк; без limit — до конца файла; только limit — с начала, первые N строк). Для протоколов и индекса роутера KB: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md, agent-memory-and-operating-principles-v1.md (route_context их не подставляет автоматически).",
+            Description = "Прочитать файл из каталога knowledge/. Корень KB: knowledge_path или primary из --config. Возвращает содержимое или пустую строку. Опционально offset (1-based) и limit. Для протоколов: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md (route_context их не подставляет автоматически).",
             InputSchema = Schema(new
             {
                 type = "object",
                 properties = new
                 {
-                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH или корень выводится из AGENT_NOTES_FILE (см. ResolveCanonPath)." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например kb-music-theory-fundamentals-v1.md." },
                     offset = new { type = "integer", description = "Опционально. Номер первой возвращаемой строки, нумерация с 1. Без offset и limit — весь файл." },
                     limit = new { type = "integer", description = "Опционально. Максимум строк в ответе (после offset). 0 = пусто. Без limit — до конца файла." }
@@ -299,13 +299,13 @@ internal static class ToolCatalog
         new()
         {
             Name = "list_knowledge_files",
-            Description = "Список файлов в каталоге knowledge/ канона (без .revisions). Опционально subdir — подкаталог (например work для knowledge/work/). Возвращает path, size_bytes, modified_utc для каждого файла.",
+            Description = "Список файлов в каталоге knowledge/ (без .revisions). Опционально subdir — подкаталог (например work). Возвращает path, size_bytes, modified_utc.",
             InputSchema = Schema(new
             {
                 type = "object",
                 properties = new
                 {
-                    canon_path = new { type = "string", description = "Корень репо agent-notes. Опционально, если задана AGENT_NOTES_CANON_PATH или корень выводится из AGENT_NOTES_FILE (см. ResolveCanonPath)." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
                     subdir = new { type = "string", description = "Подкаталог внутри knowledge/ (пусто = весь knowledge/). Например work." }
                 },
                 required = Array.Empty<string>()

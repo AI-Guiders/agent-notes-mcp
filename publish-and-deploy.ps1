@@ -29,14 +29,26 @@ try {
     }
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+    $configSrc = Join-Path $here "config\agent-notes-mcp.toml"
+    if (-not (Test-Path -LiteralPath $configSrc)) {
+        Write-Error "Missing config template: $configSrc"
+        exit 1
+    }
+    $configDst = Join-Path $Target "agent-notes-mcp.toml"
+    Copy-Item -LiteralPath $configSrc -Destination $configDst -Force
+
     $exe = Join-Path $Target "AgentNotesMcp.exe"
     $exeJson = $exe.Replace('\', '\\')
+    $configJson = $configDst.Replace('\', '/')
+    Write-Host ""
+    Write-Host "Config: $configDst"
     Write-Host ""
     Write-Host "Cursor MCP: paste into mcp.json ->"
     Write-Host @"
-  "agent-notes-mcp": {
+  "agent-notes": {
     "command": "$exeJson",
-    "args": []
+    "args": ["--config", "$configJson"],
+    "env": {}
   }
 "@
     Write-Host ""

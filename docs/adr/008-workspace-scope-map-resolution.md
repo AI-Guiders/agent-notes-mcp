@@ -29,5 +29,5 @@
 ## Планируемая эволюция
 
 - **Сейчас (legacy):** п.0 — `mcp-resolve-paths-v1.json` + embedded JSON в Core.
-- **Целевое ([014](014-agent-notes-local-settings-toml-v1.md), KB ADR 013):** пути **`workspace_scope_map`** / **`scope_alias_map`** только из **`[resolve.paths]`** в TOML (`--config`); удалить `ReadMcpResolvePathsOrDefaults` для META JSON.
+- **Целевое ([014](014-agent-notes-local-settings-toml-v1.md), KB ADR 013):** **`[workspace].scope_map`** / **`scope_aliases`** в TOML; удалить чтение META JSON.
 - Карта и алиасы по-прежнему в markdown под primary canon; при смене алиасов — **`scope-alias-map-v1.md`** и тесты **`TestScopeAliasesMd`**.

@@ -1,0 +1,30 @@
+# Локальные настройки agent-notes-mcp 2.0 (schema file version = 1).
+# SSOT для publish: копируется в D:\agent-notes-mcp\agent-notes-mcp.toml (см. publish-and-deploy.ps1).
+# Cursor mcp.json:
+#   "args": ["--config", "D:/agent-notes-mcp/agent-notes-mcp.toml"], "env": {}
+
+version = 1
+
+[knowledge]
+primary = "personal"
+
+[knowledge.roots]
+personal = "D:/Experiments/agent-notes"
+# org = "D:/clones/AI-Guiders/kb"
+
+# [[knowledge.read_only]]
+# id = "org"
+# path = "D:/clones/AI-Guiders/kb"
+
+[workspace]
+default_scope = "mixed"
+scope_map = "work/local/workspace-scope-map-v1.md"
+scope_aliases = "work/local/scope-alias-map-v1.md"
+
+[status]
+enabled = false
+port = 17341
+bind = "127.0.0.1"
+
+[status.preview]
+workspace = "D:/Experiments/PersonalCursorFolder"

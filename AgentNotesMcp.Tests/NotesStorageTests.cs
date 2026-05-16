@@ -18,6 +18,9 @@ public sealed class NotesStorageTests
         hrv => harvester
         """;
 
+    internal static void SeedTestScopeAliasDefaultsForRoot(string canonTreeRoot) =>
+        SeedTestScopeAliasDefaults(canonTreeRoot);
+
     private static void SeedTestScopeAliasDefaults(string canonTreeRoot)
     {
         var local = Path.Combine(canonTreeRoot, "knowledge", "work", "local");
@@ -369,6 +372,15 @@ ok
         using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
         var storage = new NotesStorage();
 
+        var notesRoot = Path.GetDirectoryName(temp.NotesFilePath)!;
+        var metaDir = Path.Combine(notesRoot, "knowledge", "META");
+        Directory.CreateDirectory(metaDir);
+        File.WriteAllText(Path.Combine(metaDir, "memory-architecture-v1.json"), """
+            { "l0": ["active-scope"], "l0_owner": ["current-task"] }
+            """);
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "memory-architecture-v1", """
+            l0_manifest: knowledge/META/memory-architecture-v1.json
+            """));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "current: door-to-singularity"));
         Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "current-task", new string('x', 7000)));
 
@@ -465,6 +477,65 @@ ok
         Assert.Contains("custom-baseline-a", ids);
         Assert.Contains("custom-baseline-b", ids);
         Assert.DoesNotContain("THIS_SHOULD_BE_IGNORED", ids);
+    }
+
+    [Fact]
+    public void ReadHotContext_LoadsDefaultManifest_WhenOnlyPublicStubPresent()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+
+        var notesRoot = Path.GetDirectoryName(temp.NotesFilePath)!;
+        var metaDir = Path.Combine(notesRoot, "knowledge", "META");
+        Directory.CreateDirectory(metaDir);
+        File.WriteAllText(Path.Combine(metaDir, "memory-architecture-v1.json"), """
+            {
+              "l0": ["baseline-integrity-epistemic-v1", "active-scope"],
+              "l0_owner": ["current-task"]
+            }
+            """);
+
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "memory-architecture-v1", """
+            l0_manifest: knowledge/META/memory-architecture-v1.json
+            """));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "baseline-integrity-epistemic-v1", "baseline"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "scope pointer"));
+
+        var json = storage.ReadHotContext(temp.WorkspacePath, null);
+        using var doc = JsonDocument.Parse(json);
+        var ids = doc.RootElement.GetProperty("loaded_sections").EnumerateArray()
+            .Select(e => e.GetString() ?? "")
+            .ToList();
+
+        Assert.Contains("baseline-integrity-epistemic-v1", ids);
+        Assert.DoesNotContain("current-task", ids);
+    }
+
+    [Fact]
+    public void MemoryHealth_DoesNotRequireCurrentTask_WhenNotInHotSectionIds()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+
+        var notesRoot = Path.GetDirectoryName(temp.NotesFilePath)!;
+        var metaDir = Path.Combine(notesRoot, "knowledge", "META");
+        Directory.CreateDirectory(metaDir);
+        File.WriteAllText(Path.Combine(metaDir, "memory-architecture-v1.json"), """
+            { "l0": ["baseline-integrity-epistemic-v1", "active-scope"] }
+            """);
+
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "memory-architecture-v1", """
+            l0_manifest: knowledge/META/memory-architecture-v1.json
+            """));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "baseline-integrity-epistemic-v1", "baseline"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "active-scope", "scope"));
+
+        var json = storage.MemoryHealth(temp.WorkspacePath, null);
+        using var doc = JsonDocument.Parse(json);
+        var missing = doc.RootElement.GetProperty("missing_core_sections");
+        Assert.Equal(0, missing.GetArrayLength());
     }
 
     [Fact]

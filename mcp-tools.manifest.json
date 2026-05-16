@@ -13,15 +13,15 @@
     },
     {
       "name": "write_agent_notes",
-      "description": "Записать заметки агента (полная замена файла). Агент сам решает, когда, что и в каком формате сохранять. Путь: AGENT_NOTES_FILE (если задана) → иначе при AGENT_NOTES_CANON_PATH: {канон}/agent-notes.md → иначе workspace_path/.cascade-ide/agent-notes.md. ВНИМАНИЕ: перезаписывает файл целиком; для добавления блока без риска стереть остальное используйте append_agent_notes."
+      "description": "Записать заметки агента (полная замена файла). Путь hot-файла: primary knowledge root из --config → {корень}/agent-notes.md; иначе workspace_path/.cascade-ide/agent-notes.md. ВНИМАНИЕ: перезаписывает файл целиком; для добавления блока без риска стереть остальное используйте append_agent_notes."
     },
     {
       "name": "append_agent_notes",
-      "description": "Добавить блок в конец заметок агента без перезаписи файла. Безопасно: не трогает существующее содержимое. Путь: AGENT_NOTES_FILE → иначе {AGENT_NOTES_CANON_PATH}/agent-notes.md → иначе workspace_path/.cascade-ide/agent-notes.md. Рекомендуется для добавления своего блока (Claude, Composer, другой агент), чтобы не стереть заметки других."
+      "description": "Добавить блок в конец заметок агента без перезаписи файла. Путь hot-файла: primary knowledge root из --config → {корень}/agent-notes.md; иначе workspace_path/.cascade-ide/agent-notes.md."
     },
     {
       "name": "read_agent_notes",
-      "description": "Прочитать заметки агента. Путь: AGENT_NOTES_FILE → иначе {AGENT_NOTES_CANON_PATH}/agent-notes.md → иначе workspace_path/.cascade-ide/agent-notes.md. Возвращает содержимое или пустую строку. Агент восстанавливает контекст в новом чате."
+      "description": "Прочитать заметки агента. Путь hot-файла: primary knowledge root из --config → {корень}/agent-notes.md; иначе workspace_path/.cascade-ide/agent-notes.md. Возвращает содержимое или пустую строку."
     },
     {
       "name": "read_hot_context",
@@ -29,7 +29,7 @@
     },
     {
       "name": "upsert_agent_notes_section",
-      "description": "Точечно вставить/обновить секцию заметок по section_id без полной перезаписи файла. Секция оформляется маркерами <!-- section:ID --> ... <!-- /section:ID -->. Путь: AGENT_NOTES_FILE → иначе {AGENT_NOTES_CANON_PATH}/agent-notes.md → иначе workspace_path/.cascade-ide/agent-notes.md."
+      "description": "Точечно вставить/обновить секцию заметок по section_id без полной перезаписи файла. Секция оформляется маркерами <!-- section:ID --> ... <!-- /section:ID -->. Путь hot-файла — как у read_agent_notes."
     },
     {
       "name": "list_agent_notes_revisions",
@@ -53,11 +53,11 @@
     },
     {
       "name": "write_knowledge_file",
-      "description": "Записать файл в каталог knowledge/ канона (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Путь к канону: canon_path, иначе AGENT_NOTES_CANON_PATH, иначе вывод из AGENT_NOTES_FILE (см. ResolveCanonPath)."
+      "description": "Записать файл в каталог knowledge/ (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Корень KB: knowledge_path или primary из --config."
     },
     {
       "name": "append_knowledge_file",
-      "description": "Добавить блок в конец файла в knowledge/ канона без перезаписи. Перед добавлением текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true)."
+      "description": "Добавить блок в конец файла в knowledge/ без перезаписи. Перед добавлением текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true)."
     },
     {
       "name": "upsert_knowledge_section",
@@ -65,7 +65,7 @@
     },
     {
       "name": "delete_knowledge_file",
-      "description": "Удалить файл из каталога knowledge/ канона. file_path — относительный путь (без '..'). Если файла нет — NO_CHANGES."
+      "description": "Удалить файл из каталога knowledge/. file_path — относительный путь (без '..'). Если файла нет — NO_CHANGES."
     },
     {
       "name": "delete_knowledge_section",
@@ -73,11 +73,11 @@
     },
     {
       "name": "read_knowledge_file",
-      "description": "Прочитать файл из каталога knowledge/ канона. Путь к канону: аргумент canon_path, иначе AGENT_NOTES_CANON_PATH, иначе вывод из AGENT_NOTES_FILE (см. ResolveCanonPath). Возвращает содержимое или пустую строку, если файла нет. Опционально offset (номер первой возвращаемой строки, 1-based, как в редакторе) и limit (макс. число строк; без limit — до конца файла; только limit — с начала, первые N строк). Для протоколов и индекса роутера KB: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md, agent-memory-and-operating-principles-v1.md (route_context их не подставляет автоматически)."
+      "description": "Прочитать файл из каталога knowledge/. Корень KB: knowledge_path или primary из --config. Возвращает содержимое или пустую строку. Опционально offset (1-based) и limit. Для протоколов: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md (route_context их не подставляет автоматически)."
     },
     {
       "name": "list_knowledge_files",
-      "description": "Список файлов в каталоге knowledge/ канона (без .revisions). Опционально subdir — подкаталог (например work для knowledge/work/). Возвращает path, size_bytes, modified_utc для каждого файла."
+      "description": "Список файлов в каталоге knowledge/ (без .revisions). Опционально subdir — подкаталог (например work). Возвращает path, size_bytes, modified_utc."
     }
   ]
 }

@@ -4,13 +4,22 @@ using AgentNotes.Core;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
+var startupCode = AgentNotesBootstrap.TryLoadSettings(args, out var localSettings, out var startupError);
+if (startupCode != 0)
+{
+    Console.Error.WriteLine(startupError);
+    return startupCode;
+}
+
+AgentNotesRuntime.Initialize(localSettings!);
+
 var storage = new NotesStorage();
 var handlers = new ToolHandlers(storage);
 var tools = ToolCatalog.Build();
 
 var options = new McpServerOptions
 {
-    ServerInfo = new Implementation { Name = "AgentNotesMcp", Version = "0.5.1" },
+    ServerInfo = new Implementation { Name = "AgentNotesMcp", Version = "2.0.0" },
     ProtocolVersion = "2024-11-05",
     Capabilities = new ServerCapabilities
     {

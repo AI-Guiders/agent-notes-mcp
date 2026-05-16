@@ -3,7 +3,7 @@
 **Статус:** Proposed  
 **Дата:** 2026-05-16  
 
-**Связано:** [008](008-workspace-scope-map-resolution.md); [014](014-agent-notes-local-settings-toml-v1.md) — секция **`[status]`** в `.cursor/agent-notes.toml`; в каноне KB — `knowledge/adr/013-agent-notes-mcp-local-settings-toml-v1.md`, [012](012-multi-canon-workspace-resolution-v1.md) (multi-canon).
+**Связано:** [008](008-workspace-scope-map-resolution.md); [014](014-agent-notes-local-settings-toml-v1.md) — секция **`[status]`** в локальном TOML (`--config`, с **MCP 2.0**); KB — `knowledge/adr/013-agent-notes-mcp-local-settings-toml-v1.md`.
 
 **Вне scope:** remote operator / PWA / Operator Gateway (Cascade IDE) — другие ADR и продукты.
 
@@ -42,7 +42,7 @@ port = 17341
 bind = "127.0.0.1"
 
 [status.preview]
-# workspace_path = "..."   # для превью scope на странице
+# workspace = "..."   # для превью scope на странице (KB ADR 013)
 ```
 
 `bind` в v1: только `127.0.0.1`; иное — warning и принудительно loopback.
@@ -55,11 +55,11 @@ bind = "127.0.0.1"
 |------|----------|
 | Версия MCP, PID, uptime | процесс |
 | `config_path` | абсолютный путь из **`--config`** ([014](014-agent-notes-local-settings-toml-v1.md)) |
-| Effective canon / notes path | слитые settings + legacy env («present / overridden») |
-| Scope, `memory_health` | существующий код; `?workspace_path=` или `[status.preview]` |
+| Primary knowledge root / notes path | TOML `[knowledge]` + legacy `AGENT_NOTES_*` («present / overridden») |
+| Scope, `memory_health` | существующий код; `?workspace_path=` или `[status.preview].workspace` |
 | Карта workspace | метаданные (N правил), без полного дампа путей в HTML |
 | Tools | `ToolCatalog` |
-| Secondary canon | флаг «настроен», без содержимого ([012] в KB) |
+| Read-only knowledge roots | `[[knowledge.read_only]]` настроен / нет ([012] в KB) |
 
 **Не входит:** запись в KB/hot через HTTP; прокси всех tools; LAN/WAN.
 
@@ -95,7 +95,7 @@ Loopback only; без `personal/`, hot ниже `public-cut`, секретов; 
 
 ## 5. Критерии принятия
 
-- `[status].enabled = true` + `--config` → браузер по URL из runtime json: версия, canon, scope, `memory_health`, `config_path`.
+- `[status].enabled = true` + `--config` → браузер: версия MCP, primary KB root, scope, `memory_health`, `config_path`.
 - `enabled = false` → порт не слушается.
 - Smoke-тесты loopback.
 

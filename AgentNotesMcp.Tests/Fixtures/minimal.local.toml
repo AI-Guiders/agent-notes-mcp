@@ -1,0 +1,17 @@
+version = 1
+
+[knowledge]
+primary = "test"
+
+[knowledge.roots]
+test = "PLACEHOLDER_ROOT"
+
+[workspace]
+default_scope = "door-to-singularity"
+scope_map = "work/local/workspace-scope-map-v1.md"
+scope_aliases = "work/local/scope-alias-map-v1.md"
+
+[status]
+enabled = false
+port = 17341
+bind = "127.0.0.1"

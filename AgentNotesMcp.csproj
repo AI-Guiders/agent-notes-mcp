@@ -11,6 +11,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>AgentNotesMcp</RootNamespace>
     <AssemblyName>AgentNotesMcp</AssemblyName>
+    <Version>2.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

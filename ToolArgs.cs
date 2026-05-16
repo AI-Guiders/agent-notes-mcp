@@ -21,6 +21,9 @@ internal static class ToolArgs
         return string.IsNullOrWhiteSpace(str) ? null : str.Trim();
     }
 
+    internal static string? OptionalKnowledgePath(IReadOnlyDictionary<string, JsonElement> args) =>
+        OptionalString(args, "knowledge_path");
+
     internal static int GetIntOrDefault(IReadOnlyDictionary<string, JsonElement> args, string key, int defaultValue, int min, int max)
     {
         if (!args.TryGetValue(key, out var raw))
