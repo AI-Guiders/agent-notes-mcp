@@ -5,7 +5,12 @@
 
 **Канонический текст (KB):** `knowledge/adr/013-agent-notes-mcp-local-settings-toml-v1.md` (репо **agent-notes**), в т.ч. **R7 — major 2.0**.
 
-**Связано:** [008](008-workspace-scope-map-resolution.md), [013](013-localhost-status-surface-v1.md) (`[status]` в том же TOML).
+## Связанные ADR
+
+| ADR | Роль |
+|-----|------|
+| [008](008-workspace-scope-map-resolution.md) | Резолв scope workspace |
+| [013](013-localhost-status-surface-v1.md) | `[status]` в том же TOML |
 
 **Релиз:** **semver major `2.0.0`** (единственный «2» у продукта). Breaking: обязательный **`--config`**, **новый** TOML (в 1.x не было), `canon_path` → `knowledge_path`, без META JSON / `AGENT_NOTES_CANON_PATH` в supported install. Поле `version = 1` в TOML — **первая** схема файла, не «версия 2».
 
