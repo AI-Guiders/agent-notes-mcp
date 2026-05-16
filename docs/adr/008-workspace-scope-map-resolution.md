@@ -1,9 +1,21 @@
 # ADR 008 (MCP): резолв `active_scope` и карта workspace → scope
 
-**Статус:** зеркало решения в каноне KB  
+**Статус:** Accepted (зеркало KB)  
 **Дата:** 2026-05-12  
 
-**Канонический текст (KB + публичный контур):** в репозитории **agent-notes** — `knowledge/adr/008-workspace-scope-map-hot-mcp-and-public-cut.md`.
+**Канонический текст (KB):** `knowledge/adr/008-workspace-scope-map-hot-mcp-and-public-cut.md`.
+
+## Связанные ADR
+
+| ADR | Роль |
+|-----|------|
+| [014](014-agent-notes-local-settings-toml-v1.md) | `[workspace]` в TOML (`--config`, MCP 2.0) |
+
+## Резюме
+
+- Цепочка **`ResolveScope`:** явный `active_scope` → карта путей → секция `active-scope` → fallback `door-to-singularity`.
+- С **MCP 2.0** алиасы и `scope_map` из TOML; META JSON и `mcp-resolve-paths-v1.json` в рантайме **не** читаются.
+- Карта путей в публичном kb-public **за public-cut**; полный hot — только локальный клон.
 
 ---
 
