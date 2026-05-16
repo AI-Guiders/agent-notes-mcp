@@ -2,6 +2,7 @@
 
 **Статус:** Proposed  
 **Дата:** 2026-05-16  
+**Обновлено:** 2026-05-16 — breaking MCP **2.0**: обязательный `--config`, Tomlyn, без legacy env/META JSON.
 
 **Канонический текст (KB):** `knowledge/adr/013-agent-notes-mcp-local-settings-toml-v1.md` (репо **agent-notes**), в т.ч. **R7 — major 2.0**.
 
@@ -9,12 +10,15 @@
 
 | ADR | Роль |
 |-----|------|
-| [008](008-workspace-scope-map-resolution.md) | Резолв scope workspace |
-| [013](013-localhost-status-surface-v1.md) | `[status]` в том же TOML |
+| [008](008-workspace-scope-map-resolution.md) | резолв scope workspace |
+| [013](013-localhost-status-surface-v1.md) | секция `[status]` в том же TOML |
 
-**Релиз:** **semver major `2.0.0`** (единственный «2» у продукта). Breaking: обязательный **`--config`**, **новый** TOML (в 1.x не было), `canon_path` → `knowledge_path`, без META JSON / `AGENT_NOTES_CANON_PATH` в supported install. Поле `version = 1` в TOML — **первая** схема файла, не «версия 2».
+## Резюме
 
-**Принцип:** явное лучше неявного — один путь в `mcp.json`, без walk-up.
+- **MCP 2.0:** один локальный TOML по **`--config`** в `mcp.json` (как DBHub), без walk-up и без `AGENT_NOTES_CANON_PATH`.
+- Секции: `[knowledge]`, `[workspace]`, `[status]`; `version = 1` в файле — схема TOML, не semver продукта.
+- Breaking: `canon_path` → `knowledge_path`; embedded defaults + merge Tomlyn.
+- До релиза **1.x** — env + META JSON; после — только TOML.
 
 ---
 

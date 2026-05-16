@@ -4,6 +4,8 @@
 
 **Полный канон KB** (включая ADR, затрагивающие и KB, и MCP): репозиторий **agent-notes**, каталог `knowledge/adr/`. При открытом каноне рядом с MCP читай оттуда как источник истины.
 
+Шапка ADR в этом репо — [snippets/adr-header-convention-mcp.md](snippets/adr-header-convention-mcp.md).
+
 ## Список
 
 | ADR | Тема |

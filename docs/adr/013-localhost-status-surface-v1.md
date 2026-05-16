@@ -1,11 +1,28 @@
 # ADR 013: Localhost status surface (AgentNotesStatus)
 
-**Статус:** Accepted (фаза 1–2: HTTP, HTML/JSON, ring buffer, `/hot-preview`, `--status-only`)  
+**Статус:** Accepted · Implemented  
 **Дата:** 2026-05-16  
+**Обновлено:** 2026-05-16 — фазы 1–2: HTTP loopback, HTML/JSON, ring buffer, `/hot-preview`, `--status-only`.
 
-**Связано:** [008](008-workspace-scope-map-resolution.md); [014](014-agent-notes-local-settings-toml-v1.md) — секция **`[status]`** в локальном TOML (`--config`, с **MCP 2.0**); KB — `knowledge/adr/013-agent-notes-mcp-local-settings-toml-v1.md`.
+**Канонический текст (KB):** `knowledge/adr/013-agent-notes-mcp-local-settings-toml-v1.md` (секция status).
 
-**Вне scope:** remote operator / PWA / Operator Gateway (Cascade IDE) — другие ADR и продукты.
+## Связанные ADR
+
+| ADR | Роль |
+|-----|------|
+| [008](008-workspace-scope-map-resolution.md) | резолв `active_scope` для `/hot-preview` |
+| [014](014-agent-notes-local-settings-toml-v1.md) | секция **`[status]`** в TOML (`--config`, MCP 2.0) |
+
+### Вне scope
+
+Remote operator / PWA / Operator Gateway (Cascade IDE) — другие ADR и продукты.
+
+## Резюме
+
+- Опциональный **HTTP на loopback** в процессе `agent-notes-mcp` для отладки без лишних MCP round-trip.
+- Endpoints: `/`, `/status.json`, `/health`, `/hot-preview` (см. §2.1).
+- По умолчанию **выключено** — `[status].enabled` в TOML из **`--config`** ([014](014-agent-notes-local-settings-toml-v1.md)).
+- `bind` в v1 — только `127.0.0.1`.
 
 ---
 
