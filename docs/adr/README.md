@@ -9,4 +9,4 @@
 | ADR | Тема |
 |-----|------|
 | [008](008-workspace-scope-map-resolution.md) | Резолв `active_scope`, карта workspace → scope, связь с `public-cut` в KB |
-| [013](013-localhost-status-surface-v1.md) | **AgentNotesStatus:** opt-in HTTP на `127.0.0.1` — резолв путей, scope, `memory_health`, версия MCP (не IDE/PWA) |
+| [013](013-localhost-status-surface-v1.md) | **AgentNotesStatus** + **TOML** `.cursor/agent-notes.toml` (`[status]`); вывод env `AGENT_NOTES_*` (с ADR 012 в каноне) |

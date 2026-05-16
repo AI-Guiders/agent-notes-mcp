@@ -3,7 +3,7 @@
 **Статус:** Proposed  
 **Дата:** 2026-05-16  
 
-**Связано (только MCP/KB):** [008](008-workspace-scope-map-resolution.md); в каноне KB — `knowledge/adr/008-workspace-scope-map-hot-mcp-and-public-cut.md`, `knowledge/adr/012-multi-canon-workspace-resolution-v1.md`.
+**Связано (только MCP/KB):** [008](008-workspace-scope-map-resolution.md); в каноне KB — `knowledge/adr/008-workspace-scope-map-hot-mcp-and-public-cut.md`, **`knowledge/adr/012-multi-canon-workspace-resolution-v1.md`** (единый workspace TOML).
 
 **Вне scope этого ADR:** любые **remote operator / PWA / Operator Gateway** в Cascade IDE или других продуктах — отдельные решения, другой хост и другая аудитория. AgentNotesStatus **не** является пультом оператора и **не** дублирует веб-контуры IDE.
 
@@ -35,50 +35,71 @@
 
 Рабочее имя контура: **AgentNotesStatus** (не путать с продуктовыми status API других репозиториев).
 
-### 2.2. Конфигурация (файл, не зоопарк env)
+### 2.2. Конфигурация: один TOML, не зоопарк env
 
 По умолчанию **выключено** (нулевая поверхность атаки, нет лишних портов в CI).
 
-**Принцип:** как у [008](008-workspace-scope-map-resolution.md) для путей карты — **embedded defaults** в `AgentNotes.Core` + **слияние** дисковых JSON; **не** отдельная переменная на каждый флаг.
+**Формат: TOML**, не JSON — человекочитаемые комментарии, меньше кавычек, привычно рядом с `.cursor/mcp.json` и toolchain .NET.
 
-#### Файлы (приоритет снизу вверх)
+**Один файл на workspace** (канон KB, ADR 012 — `knowledge/adr/012-multi-canon-workspace-resolution-v1.md`): **`.cursor/agent-notes.toml`** в корне кодового workspace (walk вверх, как `.git`). Секция **`[status]`** — часть того же файла, что **`[canon]`**, **`[scope]`**, **`[behavior]`**; отдельные `mcp-local-settings*.json` **не** вводим.
 
-| Уровень | Путь | Назначение |
-|---------|------|------------|
-| 0 | embedded `mcp-local-settings-defaults.json` | `status.enabled: false`, `port: 17341`, `bind: "127.0.0.1"`, `default_workspace_path: null` |
-| 1 | `{canon}/knowledge/META/mcp-local-settings-v1.json` | настройки **установки канона** на машине (включить status, порт по умолчанию) |
-| 2 | `{workspace}/.cascade-ide/mcp-local-settings.json` | **пер-workspace** (свой порт при нескольких MCP; опционально `workspace_path` для превью scope) |
+#### Цепочка резолва (целевая, снизу вверх)
 
-Слияние: поверхностные ключи перекрывают глубокие; невалидный JSON → лог в stderr + откат к предыдущему уровню (как `mcp-resolve-paths-v1.json`).
+| Приоритет | Источник | Содержание |
+|-----------|----------|------------|
+| 0 | embedded `agent-notes-mcp.defaults.toml` в Core | дефолты: `status.enabled = false`, `port = 17341`, `bind = "127.0.0.1"` |
+| 1 | **`.cursor/agent-notes.toml`** (найденный walk-up от `workspace_path`) | canon paths, scope, **status**, secondary canon |
+| 2 | **Legacy env** (временно) | `AGENT_NOTES_CANON_PATH`, `AGENT_NOTES_FILE` — см. §2.6 |
+| 3 | Fallback hot | `workspace_path/.cascade-ide/agent-notes.md` |
 
-**Схема v1 (черновик):**
+Слияние: TOML workspace перекрывает embedded; при ошибке парсинга — stderr + откат на уровень ниже.
 
-```json
-{
-  "version": 1,
-  "status": {
-    "enabled": true,
-    "port": 17341,
-    "bind": "127.0.0.1"
-  }
-}
+**Пример (фрагмент; полный шаблон — `knowledge/work/local/agent-notes.workspace.example.toml` в каноне):**
+
+```toml
+version = 1
+
+[canon]
+primary = "personal"
+
+[canon.paths]
+personal = "D:/Experiments/agent-notes"
+
+[status]
+enabled = true
+port = 17341
+bind = "127.0.0.1"   # v1: только loopback; иное — warning и принудительно 127.0.0.1
+
+[status.preview]
+# опционально: default workspace для scope/memory_health на странице (если хост не передал workspace_path)
+# workspace_path = "D:/Experiments/PersonalCursorFolder"
 ```
 
-`bind` в v1 допускает только `127.0.0.1`; иное значение — игнор + warning (не слушать на `0.0.0.0`).
-
-#### Env — только escape hatch
-
-| Переменная | Когда |
-|------------|--------|
-| `AGENT_NOTES_LOCAL_SETTINGS_FILE` | **опционально:** абсолютный путь к одному JSON вместо цепочки 1–2 (тесты, нестандартная раскладка) |
-
-`AGENT_NOTES_FILE` / `AGENT_NOTES_CANON_PATH` остаются **корнем канона**, не дублируем их для status.
+Парсер: **Tomlyn** (или эквивалент) в `AgentNotes.Core`; одна модель `AgentNotesLocalSettings` для MCP и тестов.
 
 #### Runtime-артефакт (не конфиг)
 
-При старте listener процесс может записать **`{workspace}/.cascade-ide/agent-notes-status.runtime.json`** (`pid`, `port`, `url`) — чтобы человек и скрипты нашли **этот** экземпляр без угадывания порта. Файл перезаписывается при рестарте MCP; в git не коммитить.
+При старте listener — **`{workspace}/.cascade-ide/agent-notes-status.runtime.json`** (`pid`, `port`, `url`, `config_source`: путь к TOML). JSON здесь уместен: пишет только процесс, читают скрипты/браузер. В git не коммитить.
 
-Документировать: README MCP, пример в `knowledge/META/` (шаблон в каноне), runbook `knowledge/worlds/knowledge-engineering/runbook-kb-mcp-access-v1.md`.
+#### Env в v1 реализации status
+
+На фазе **только AgentNotesStatus** новых env **не** добавляем. Существующие `AGENT_NOTES_*` не трогаем до фазы слияния в Core (ADR 012, фаза 2).
+
+### 2.6. Вывод `AGENT_NOTES_CANON_PATH` / `AGENT_NOTES_FILE` (намерение)
+
+**Цель:** настроить MCP **одним TOML** в workspace (и embedded defaults), без дублирования в `mcp.json` env и без «угадай, какой канон видит процесс».
+
+| Сейчас | Целевое |
+|--------|---------|
+| `AGENT_NOTES_CANON_PATH`, `AGENT_NOTES_FILE` в env Cursor | **`[canon]` / `[canon.paths]`** в `.cursor/agent-notes.toml` |
+| `knowledge/META/mcp-resolve-paths-v1.json` | фаза 3: секция **`[resolve.paths]`** в том же TOML (или оставить JSON до миграции — [008](008-workspace-scope-map-resolution.md)) |
+| Разрозненные флаги | одна схема, версия `version = 1` |
+
+**Legacy:** env остаётся **ниже по приоритету**, чем TOML, пока не объявим deprecation в README и runbook; затем major MCP — env только для CI/тестов (`AGENT_NOTES_FILE` в `EnvVarScope`).
+
+**Статус-страница** показывает: `config_source` (путь TOML), effective `canon.primary`, legacy env «задано / не задано» (без секретов), чтобы видеть, **что победило** в резолве.
+
+Документировать: README MCP, example toml в каноне, `runbook-kb-mcp-access-v1.md`, кросс-ссылка в ADR 012.
 
 ### 2.3. Содержимое v1 (read-only)
 
@@ -87,8 +108,9 @@
 | Версия / имя сервера | `McpServerOptions.ServerInfo` | как в ListTools |
 | PID, uptime | процесс | |
 | Effective paths | `NotesStorage` / резолв путей | `agent-notes.md`, canon root, существует ли файл |
-| Env **presence** | `AGENT_NOTES_FILE`, `AGENT_NOTES_CANON_PATH`, status flags | **не** выводить значения секретов; пути — с сокращением home (`~`) |
-| Resolved scope | `ResolveScope(workspace_path)` | query `?workspace_path=` или `default_workspace_path` из слитого `mcp-local-settings` |
+| Config source | слитый TOML + legacy env | путь к `.cursor/agent-notes.toml`; env — только «present / overridden by toml» |
+| Effective canon | `ResolveCanonPath` (целевой) | primary path, notes file; пути с `~` |
+| Resolved scope | `ResolveScope(workspace_path)` | query `?workspace_path=` или `[status.preview].workspace_path` |
 | `memory_health` | существующий метод | тот же JSON, что тула |
 | Карта workspace | метаданные | «файл найден / N правил», без дампа полных путей в HTML по умолчанию |
 | Список tools | `ToolCatalog` | имена + краткие описания |
@@ -110,7 +132,7 @@
 
 ### 2.5. Несколько экземпляров MCP
 
-Cursor может запустить **несколько** процессов (разные workspace). У каждого — свой `.cascade-ide/mcp-local-settings.json` (порт) и свой `agent-notes-status.runtime.json`. Страница **всегда** описывает **текущий** процесс, не «все MCP на машине».
+Cursor может запустить **несколько** процессов (разные workspace). У каждого — свой walk-up **`.cursor/agent-notes.toml`** (свой `status.port`) и свой `agent-notes-status.runtime.json`. Страница **всегда** описывает **текущий** процесс, не «все MCP на машине».
 
 ---
 
@@ -122,8 +144,8 @@ Cursor может запустить **несколько** процессов (
 
 ### Фаза 1 (MVP)
 
-- `Microsoft.AspNetCore.App` minimal hosting **или** `HttpListener` — предпочтение: minimal API в отдельном partial, не блокирующий stdio loop.
-- Фоновый `Task` после `McpServer` start: Kestrel на loopback.
+- `Tomlyn` + модель настроек; чтение `[status]` из `.cursor/agent-notes.toml` (walk-up); embedded defaults TOML.
+- `Microsoft.AspNetCore.App` minimal hosting — Kestrel на loopback, не блокируя stdio.
 - Endpoints: `GET /`, `GET /status.json`, `GET /health` → `200 OK`.
 
 ### Фаза 2 (опционально)
@@ -141,22 +163,24 @@ Cursor может запустить **несколько** процессов (
 | Только MCP tool `debug_status` | не открывается в браузере одним кликом; нужен хост с агентом |
 | Отдельный exe | дублирование резолва; рассинхрон с живым MCP |
 | Расширить `memory_health` | уже есть, но не заменяет path/pid/версию в одном UI |
-| Только env-флаги (`AGENT_NOTES_STATUS_*`) | плохо масштабируется; дублирует то, что уже решает JSON в META / `.cascade-ide/` |
+| Только env-флаги | плохо масштабируется; дублирует TOML |
+| JSON для локальных настроек | без комментариев; дублирует ADR 012 TOML; `mcp-resolve-paths-v1.json` — legacy до `[resolve.paths]` |
 | IDE / PWA status | другой продукт; не зависит от agent-notes-mcp |
 
 ---
 
 ## 5. Критерии принятия (для Accepted)
 
-- При `status.enabled: true` в слитом local-settings после старта MCP в браузере по URL из `agent-notes-status.runtime.json` видны версия, effective canon path, scope для `default_workspace_path`, фрагмент `memory_health`.
-- При `enabled: false` (дефолт) — порт не слушается.
+- При `[status].enabled = true` в слитом TOML после старта MCP в браузере по URL из `agent-notes-status.runtime.json` видны версия, effective canon, scope, фрагмент `memory_health`, `config_source`.
+- При `enabled = false` (дефолт) — порт не слушается.
 - Bind не `0.0.0.0`.
-- Тесты: merge settings (3 уровня), smoke HTTP на loopback.
+- Тесты: parse TOML, merge с defaults, smoke HTTP на loopback.
 
 ---
 
 ## 6. Открытые вопросы
 
-1. Один файл `mcp-local-settings-v1.json` vs расширить существующий `mcp-resolve-paths-v1.json` секцией `"status"` (меньше файлов в META, но смешение «пути KB» и «локальный HTTP»).
-2. Коммитить ли пример `mcp-local-settings-v1.json` в kb-public (только схема с `enabled: false`) или держать шаблон только в полном каноне / README.
+1. Имя файла: только `.cursor/agent-notes.toml` или alias `.cascade-ide/agent-notes.toml` (как в [012]).
+2. User-level `~/.config/agent-notes/settings.toml` для машины без привязки к одному workspace — нужен ли, или достаточно embedded + per-workspace TOML.
 3. Публиковать ли HTML как embedded resource или генерировать минимальный шаблон в коде.
+4. Порядок внедрения: сначала `[status]` + status HTTP, или сразу фаза 2 [012] (`[canon]` из TOML) в одном PR Core.
