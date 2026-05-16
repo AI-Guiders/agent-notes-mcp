@@ -7,6 +7,8 @@
 
 **Связано:** [008](008-workspace-scope-map-resolution.md), [013](013-localhost-status-surface-v1.md) (`[status]` в том же TOML).
 
+**Принцип:** явное лучше неявного — один путь в `mcp.json`, без walk-up в v1.
+
 ---
 
 ## Контекст для разработчиков MCP
@@ -31,21 +33,25 @@
 
 | Компонент | Ответственность |
 |-----------|-----------------|
-| **Program.cs** | parse `--config` (и опционально `--config-file` alias) **до** `McpServer.RunAsync` |
+| **Program.cs** | parse `--config` (alias `--config-file`) **до** `McpServer.RunAsync`; fail fast если путь задан и файл битый |
 | **AgentNotes.Core** | `LocalSettingsLoader.Load(configPath)`; Tomlyn; merge поверх embedded defaults |
-| **NotesStorage** | settings singleton / scoped from loaded file |
+| **NotesStorage** | settings from loaded file |
 | **Embedded** | `Resources/agent-notes-mcp.defaults.toml` |
 
-### Приоритет пути к файлу
+### Приоритет пути к файлу (v1)
 
-1. CLI **`--config`**
-2. Env **`AGENT_NOTES_CONFIG`** (если нет argv — для тестов и хостов без args)
-3. *(опционально, фаза 1b)* walk-up `.cursor/agent-notes.toml`
-4. Нет файла → legacy env + текущее поведение
+1. CLI **`--config`** (абсолютный путь рекомендуется)
+2. Env **`AGENT_NOTES_CONFIG`** — только для тестов / хостов без `args`
+3. Нет (1–2) → **legacy** `AGENT_NOTES_*` + `.cascade-ide/agent-notes.md` + stderr warning
+
+**Walk-up:** не реализуем в v1 (KB ADR 013).
 
 ### Поведение при ошибке config
 
-Предпочтение: **fail fast** (stderr + ненулевой exit), если `--config` задан и файл не читается — паритет с ожиданием от DBHub. Без `--config` — legacy env без падения.
+| Ситуация | Поведение |
+|----------|-----------|
+| `--config` / `AGENT_NOTES_CONFIG` задан, файл отсутствует или TOML невалиден | **exit ≠ 0**, понятное сообщение в stderr |
+| Явный путь не задан | legacy env, как сегодня; warning «migrate to --config» |
 
 ### Tomlyn
 
@@ -59,11 +65,10 @@
 
 - `mcp.json` с `--config` на example toml → тот же canon, что раньше через env.
 - `env: {}` достаточно при полном TOML.
-- Unit-тесты: `--config` fixture; отсутствующий файл + fail fast.
+- Unit-тесты: valid fixture; missing file + `--config` → fail fast.
 
 ---
 
 ## Открытые вопросы (MCP)
 
-1. Поддержка относительного пути в `--config` (от cwd процесса) или только absolute.
-2. Нужен ли walk-up вообще.
+1. Относительный `--config` от cwd — разрешить с warning или только absolute (рекомендация KB: absolute).
