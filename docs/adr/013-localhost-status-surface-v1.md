@@ -35,17 +35,50 @@
 
 Рабочее имя контура: **AgentNotesStatus** (не путать с продуктовыми status API других репозиториев).
 
-### 2.2. Включение (opt-in)
+### 2.2. Конфигурация (файл, не зоопарк env)
 
 По умолчанию **выключено** (нулевая поверхность атаки, нет лишних портов в CI).
 
-| Переменная | Смысл |
-|------------|--------|
-| `AGENT_NOTES_STATUS_HTTP` | `1` / `true` — включить listener |
-| `AGENT_NOTES_STATUS_PORT` | порт (дефолт, напр. `17341`; при занятости — fail fast с понятным логом в stderr) |
-| `AGENT_NOTES_STATUS_BIND` | только `127.0.0.1` в v1 (другие bind — **не** в v1) |
+**Принцип:** как у [008](008-workspace-scope-map-resolution.md) для путей карты — **embedded defaults** в `AgentNotes.Core` + **слияние** дисковых JSON; **не** отдельная переменная на каждый флаг.
 
-Документировать в README MCP и в runbook канона (`knowledge/worlds/knowledge-engineering/runbook-kb-mcp-access-v1.md` при обновлении).
+#### Файлы (приоритет снизу вверх)
+
+| Уровень | Путь | Назначение |
+|---------|------|------------|
+| 0 | embedded `mcp-local-settings-defaults.json` | `status.enabled: false`, `port: 17341`, `bind: "127.0.0.1"`, `default_workspace_path: null` |
+| 1 | `{canon}/knowledge/META/mcp-local-settings-v1.json` | настройки **установки канона** на машине (включить status, порт по умолчанию) |
+| 2 | `{workspace}/.cascade-ide/mcp-local-settings.json` | **пер-workspace** (свой порт при нескольких MCP; опционально `workspace_path` для превью scope) |
+
+Слияние: поверхностные ключи перекрывают глубокие; невалидный JSON → лог в stderr + откат к предыдущему уровню (как `mcp-resolve-paths-v1.json`).
+
+**Схема v1 (черновик):**
+
+```json
+{
+  "version": 1,
+  "status": {
+    "enabled": true,
+    "port": 17341,
+    "bind": "127.0.0.1"
+  }
+}
+```
+
+`bind` в v1 допускает только `127.0.0.1`; иное значение — игнор + warning (не слушать на `0.0.0.0`).
+
+#### Env — только escape hatch
+
+| Переменная | Когда |
+|------------|--------|
+| `AGENT_NOTES_LOCAL_SETTINGS_FILE` | **опционально:** абсолютный путь к одному JSON вместо цепочки 1–2 (тесты, нестандартная раскладка) |
+
+`AGENT_NOTES_FILE` / `AGENT_NOTES_CANON_PATH` остаются **корнем канона**, не дублируем их для status.
+
+#### Runtime-артефакт (не конфиг)
+
+При старте listener процесс может записать **`{workspace}/.cascade-ide/agent-notes-status.runtime.json`** (`pid`, `port`, `url`) — чтобы человек и скрипты нашли **этот** экземпляр без угадывания порта. Файл перезаписывается при рестарте MCP; в git не коммитить.
+
+Документировать: README MCP, пример в `knowledge/META/` (шаблон в каноне), runbook `knowledge/worlds/knowledge-engineering/runbook-kb-mcp-access-v1.md`.
 
 ### 2.3. Содержимое v1 (read-only)
 
@@ -55,7 +88,7 @@
 | PID, uptime | процесс | |
 | Effective paths | `NotesStorage` / резолв путей | `agent-notes.md`, canon root, существует ли файл |
 | Env **presence** | `AGENT_NOTES_FILE`, `AGENT_NOTES_CANON_PATH`, status flags | **не** выводить значения секретов; пути — с сокращением home (`~`) |
-| Resolved scope | `ResolveScope(workspace_path)` | нужен query `?workspace_path=` или последний известный из env `AGENT_NOTES_STATUS_WORKSPACE` |
+| Resolved scope | `ResolveScope(workspace_path)` | query `?workspace_path=` или `default_workspace_path` из слитого `mcp-local-settings` |
 | `memory_health` | существующий метод | тот же JSON, что тула |
 | Карта workspace | метаданные | «файл найден / N правил», без дампа полных путей в HTML по умолчанию |
 | Список tools | `ToolCatalog` | имена + краткие описания |
@@ -77,7 +110,7 @@
 
 ### 2.5. Несколько экземпляров MCP
 
-Cursor может запустить **несколько** процессов (разные workspace). Каждый процесс — свой порт (env в `mcp.json` на workspace) или запись порта в `{workspace}/.cascade-ide/agent-notes-status.json` при старте. Страница **всегда** описывает **текущий** процесс, не «все MCP на машине».
+Cursor может запустить **несколько** процессов (разные workspace). У каждого — свой `.cascade-ide/mcp-local-settings.json` (порт) и свой `agent-notes-status.runtime.json`. Страница **всегда** описывает **текущий** процесс, не «все MCP на машине».
 
 ---
 
@@ -107,22 +140,23 @@ Cursor может запустить **несколько** процессов (
 |---------|-------------------|
 | Только MCP tool `debug_status` | не открывается в браузере одним кликом; нужен хост с агентом |
 | Отдельный exe | дублирование резолва; рассинхрон с живым MCP |
-| Расширить `memory_health` | уже есть, но не заменяет env/path/pid/версию в одном UI |
+| Расширить `memory_health` | уже есть, но не заменяет path/pid/версию в одном UI |
+| Только env-флаги (`AGENT_NOTES_STATUS_*`) | плохо масштабируется; дублирует то, что уже решает JSON в META / `.cascade-ide/` |
 | IDE / PWA status | другой продукт; не зависит от agent-notes-mcp |
 
 ---
 
 ## 5. Критерии принятия (для Accepted)
 
-- При `AGENT_NOTES_STATUS_HTTP=1` после старта MCP в браузере `http://127.0.0.1:<port>/` видны версия, effective canon path, scope для тестового workspace, фрагмент `memory_health`.
-- Без переменной — порт не слушается.
+- При `status.enabled: true` в слитом local-settings после старта MCP в браузере по URL из `agent-notes-status.runtime.json` видны версия, effective canon path, scope для `default_workspace_path`, фрагмент `memory_health`.
+- При `enabled: false` (дефолт) — порт не слушается.
 - Bind не `0.0.0.0`.
-- Тесты: smoke на loopback (можно `WebApplicationFactory` или интеграционный с `HttpClient` к `127.0.0.1`).
+- Тесты: merge settings (3 уровня), smoke HTTP на loopback.
 
 ---
 
 ## 6. Открытые вопросы
 
-1. Дефолтный порт: фиксированный vs динамический с записью в `.cascade-ide/`.
-2. Нужен ли `AGENT_NOTES_STATUS_WORKSPACE` в env хоста Cursor по умолчанию.
+1. Один файл `mcp-local-settings-v1.json` vs расширить существующий `mcp-resolve-paths-v1.json` секцией `"status"` (меньше файлов в META, но смешение «пути KB» и «локальный HTTP»).
+2. Коммитить ли пример `mcp-local-settings-v1.json` в kb-public (только схема с `enabled: false`) или держать шаблон только в полном каноне / README.
 3. Публиковать ли HTML как embedded resource или генерировать минимальный шаблон в коде.
