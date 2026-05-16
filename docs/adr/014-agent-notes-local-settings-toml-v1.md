@@ -57,7 +57,7 @@
 
 В **AgentNotes.Core**; тесты с `--config` на fixture в `AgentNotesMcp.Tests`.
 
-`mcp-resolve-paths-v1.json` — fallback, если в TOML нет `[resolve.paths]` (KB 013, фаза 2).
+**`[resolve.paths]`** в TOML заменяет `knowledge/META/mcp-resolve-paths-v1.json` и embedded `mcp-resolve-paths-defaults.json` (KB 013 R5). Если секции нет — дефолты из embedded `agent-notes-mcp.defaults.toml`.
 
 ---
 

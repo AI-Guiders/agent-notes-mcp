@@ -28,4 +28,6 @@
 
 ## Планируемая эволюция
 
-Ранее здесь планировалось отдельное чтение файла карты — реализовано (см. канонический ADR в KB и **п.2** выше). При смене набора алиасов обновлять **`scope-alias-map-v1.md`** и при необходимости тестовую копию в **`AgentNotesMcp.Tests`** (`TestScopeAliasesMd`).
+- **Сейчас (legacy):** п.0 — `mcp-resolve-paths-v1.json` + embedded JSON в Core.
+- **Целевое ([014](014-agent-notes-local-settings-toml-v1.md), KB ADR 013):** пути **`workspace_scope_map`** / **`scope_alias_map`** только из **`[resolve.paths]`** в TOML (`--config`); удалить `ReadMcpResolvePathsOrDefaults` для META JSON.
+- Карта и алиасы по-прежнему в markdown под primary canon; при смене алиасов — **`scope-alias-map-v1.md`** и тесты **`TestScopeAliasesMd`**.
