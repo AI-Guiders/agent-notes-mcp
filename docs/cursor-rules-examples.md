@@ -13,7 +13,7 @@ https://github.com/KarataevDmitry/knowledge-base/blob/main/knowledge/META/cursor
 
 Скопируй из этого файла блок между `~~~mdc` и `~~~` в `.cursor/rules/integrity-core-immutable.mdc` (или своё имя). Пути `knowledge/META/...` должны резолвиться из корня открытого workspace; при другом layout поправь пути в копии.
 
-**Связка с Agent Notes MCP:** при использовании канона задай `AGENT_NOTES_CANON_PATH` на корень клона — тогда агент читает тот же `knowledge/`, что и правило.
+**Связка с Agent Notes MCP 2.0:** в `mcp.json` укажи `--config` на TOML, где `[knowledge].primary` указывает на корень клона с `knowledge/` — тогда агент читает тот же KB, что и правило.
 
 ---
 

@@ -93,11 +93,11 @@
 |---------|--------|-----|
 | Резолв корня | `ResolveCanonPath`, `TryInferCanonRootFromAgentNotesFilePath`, `EnvCanonPath` | `ResolveKnowledgeRoot` (или `ResolvePrimaryKnowledgeRoot`), настройки из **`LocalSettings`** после Tomlyn |
 | Пути scope | `ReadMcpResolvePathsOrDefaults`, `McpResolvePathsDefaults`, `McpResolvePathsConfigModel`, `mcp-resolve-paths-defaults.json` | `WorkspacePaths` / `[workspace]` из TOML + embedded **`agent-notes-mcp.defaults.toml`** |
-| META на диске | `knowledge/META/mcp-resolve-paths-v1.json` | **не читать**; тесты на JSON → fixture TOML |
+| META на диске | `knowledge/META/mcp-resolve-paths-v1.json` | **не читать** (реализовано в 2.0); тесты — fixture TOML |
 | Параметры API | `canonPath` во всех `*KnowledgeFile*` | `knowledgePath` (или optional `knowledgeRoot`) |
 | Внутренние имена | `canonRoot`, `ResolveCanonRootFromNotesPath` | `knowledgeRoot` |
 
-Дубликаты `.cs` в корне **agent-notes-mcp** (исключены из compile, зеркало core) — **удалить**, оставить один источник в **agent-notes-core**.
+Дубликаты `.cs` в корне **agent-notes-mcp** — **удалены** при выносе Core (зеркало больше не в репо).
 
 ### AgentNotesMcp
 

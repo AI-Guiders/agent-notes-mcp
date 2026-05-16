@@ -99,30 +99,33 @@ public sealed class NotesStorageTests
     [Fact]
     public void Knowledge_WriteRead_WithExplicitCanonPath()
     {
-        using var temp = TempCanon.Create();
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
         var storage = new NotesStorage();
         const string content = "# Test KB\n\nBody here.";
 
-        Assert.Equal("OK", storage.WriteKnowledgeFile(temp.CanonPath, "kb-test-v1.md", content));
-        Assert.Equal(content, storage.ReadKnowledgeFile(temp.CanonPath, "kb-test-v1.md"));
-        Assert.True(File.Exists(Path.Combine(temp.CanonPath, "knowledge", "kb-test-v1.md")));
+        Assert.Equal("OK", storage.WriteKnowledgeFile(root.Path, "kb-test-v1.md", content));
+        Assert.Equal(content, storage.ReadKnowledgeFile(root.Path, "kb-test-v1.md"));
+        Assert.True(File.Exists(Path.Combine(root.Path, "knowledge", "kb-test-v1.md")));
     }
 
     [Fact]
     public void Knowledge_Read_WhenFileMissing_ReturnsEmpty()
     {
-        using var temp = TempCanon.Create();
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
         var storage = new NotesStorage();
-        Assert.Equal("", storage.ReadKnowledgeFile(temp.CanonPath, "missing.md"));
+        Assert.Equal("", storage.ReadKnowledgeFile(root.Path, "missing.md"));
     }
 
     [Fact]
     public void Knowledge_Read_OffsetAndLimit_SlicesByOneBasedLines()
     {
-        using var temp = TempCanon.Create();
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
         var storage = new NotesStorage();
-        storage.WriteKnowledgeFile(temp.CanonPath, "lines.md", "a\r\nb\nc\nd", saveRevision: false);
-        var path = temp.CanonPath;
+        storage.WriteKnowledgeFile(root.Path, "lines.md", "a\r\nb\nc\nd", saveRevision: false);
+        var path = root.Path;
         Assert.Equal("b\nc", storage.ReadKnowledgeFile(path, "lines.md", 2, 2));
         Assert.Equal("c\nd", storage.ReadKnowledgeFile(path, "lines.md", 3, null));
         Assert.Equal("a\nb", storage.ReadKnowledgeFile(path, "lines.md", 1, 2));
@@ -135,27 +138,29 @@ public sealed class NotesStorageTests
     [Fact]
     public void Knowledge_Append_DoesNotOverwrite()
     {
-        using var temp = TempCanon.Create();
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
         var storage = new NotesStorage();
-        storage.WriteKnowledgeFile(temp.CanonPath, "append-test.md", "first");
-        Assert.Equal("OK", storage.AppendKnowledgeFile(temp.CanonPath, "append-test.md", "second"));
-        Assert.Equal("first\nsecond", storage.ReadKnowledgeFile(temp.CanonPath, "append-test.md"));
+        storage.WriteKnowledgeFile(root.Path, "append-test.md", "first");
+        Assert.Equal("OK", storage.AppendKnowledgeFile(root.Path, "append-test.md", "second"));
+        Assert.Equal("first\nsecond", storage.ReadKnowledgeFile(root.Path, "append-test.md"));
     }
 
     [Fact]
     public void Knowledge_UpsertSection_InsertsThenUpdates()
     {
-        using var temp = TempCanon.Create();
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
         var storage = new NotesStorage();
-        storage.WriteKnowledgeFile(temp.CanonPath, "sections.md", "preamble\n");
+        storage.WriteKnowledgeFile(root.Path, "sections.md", "preamble\n");
 
-        Assert.Equal("OK", storage.UpsertKnowledgeSection(temp.CanonPath, "sections.md", "music-router", "load playbook-music-v1"));
-        var afterInsert = storage.ReadKnowledgeFile(temp.CanonPath, "sections.md");
+        Assert.Equal("OK", storage.UpsertKnowledgeSection(root.Path, "sections.md", "music-router", "load playbook-music-v1"));
+        var afterInsert = storage.ReadKnowledgeFile(root.Path, "sections.md");
         Assert.Contains("<!-- section:music-router -->", afterInsert);
         Assert.Contains("load playbook-music-v1", afterInsert);
 
-        Assert.Equal("OK", storage.UpsertKnowledgeSection(temp.CanonPath, "sections.md", "music-router", "load playbook-music-v1 and kb-*"));
-        var afterUpdate = storage.ReadKnowledgeFile(temp.CanonPath, "sections.md");
+        Assert.Equal("OK", storage.UpsertKnowledgeSection(root.Path, "sections.md", "music-router", "load playbook-music-v1 and kb-*"));
+        var afterUpdate = storage.ReadKnowledgeFile(root.Path, "sections.md");
         Assert.DoesNotContain("load playbook-music-v1\n", afterUpdate);
         Assert.Contains("load playbook-music-v1 and kb-*", afterUpdate);
         Assert.Equal(1, Count(afterUpdate, "<!-- section:music-router -->"));
@@ -164,53 +169,56 @@ public sealed class NotesStorageTests
     [Fact]
     public void Knowledge_DeleteSection_RemovesBlock_ReturnsNoChangesWhenMissing()
     {
-        using var temp = TempCanon.Create();
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
         var storage = new NotesStorage();
-        storage.WriteKnowledgeFile(temp.CanonPath, "del-section.md", "head\n\n<!-- section:to-remove -->\nbody\n<!-- /section:to-remove -->\n\ntail");
-        Assert.Equal("OK", storage.DeleteKnowledgeSection(temp.CanonPath, "del-section.md", "to-remove"));
-        var after = storage.ReadKnowledgeFile(temp.CanonPath, "del-section.md");
+        storage.WriteKnowledgeFile(root.Path, "del-section.md", "head\n\n<!-- section:to-remove -->\nbody\n<!-- /section:to-remove -->\n\ntail");
+        Assert.Equal("OK", storage.DeleteKnowledgeSection(root.Path, "del-section.md", "to-remove"));
+        var after = storage.ReadKnowledgeFile(root.Path, "del-section.md");
         Assert.DoesNotContain("<!-- section:to-remove -->", after);
         Assert.DoesNotContain("body", after);
         Assert.Contains("head", after);
         Assert.Contains("tail", after);
-        Assert.Equal("NO_CHANGES", storage.DeleteKnowledgeSection(temp.CanonPath, "del-section.md", "to-remove"));
+        Assert.Equal("NO_CHANGES", storage.DeleteKnowledgeSection(root.Path, "del-section.md", "to-remove"));
     }
 
     [Fact]
     public void Knowledge_DeleteFile_RemovesFile_ReturnsNoChangesWhenMissing()
     {
-        using var temp = TempCanon.Create();
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
         var storage = new NotesStorage();
-        storage.WriteKnowledgeFile(temp.CanonPath, "to-delete.md", "content");
-        Assert.True(File.Exists(Path.Combine(temp.CanonPath, "knowledge", "to-delete.md")));
-        Assert.Equal("OK", storage.DeleteKnowledgeFile(temp.CanonPath, "to-delete.md"));
-        Assert.False(File.Exists(Path.Combine(temp.CanonPath, "knowledge", "to-delete.md")));
-        Assert.Equal("NO_CHANGES", storage.DeleteKnowledgeFile(temp.CanonPath, "to-delete.md"));
+        storage.WriteKnowledgeFile(root.Path, "to-delete.md", "content");
+        Assert.True(File.Exists(Path.Combine(root.Path, "knowledge", "to-delete.md")));
+        Assert.Equal("OK", storage.DeleteKnowledgeFile(root.Path, "to-delete.md"));
+        Assert.False(File.Exists(Path.Combine(root.Path, "knowledge", "to-delete.md")));
+        Assert.Equal("NO_CHANGES", storage.DeleteKnowledgeFile(root.Path, "to-delete.md"));
     }
 
     [Fact]
     public void Knowledge_Write_RejectsPathTraversal()
     {
-        using var temp = TempCanon.Create();
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
         var storage = new NotesStorage();
         Assert.Throws<ArgumentException>(() =>
-            storage.WriteKnowledgeFile(temp.CanonPath, "../evil.md", "x"));
+            storage.WriteKnowledgeFile(root.Path, "../evil.md", "x"));
     }
 
     [Fact]
-    public void Knowledge_ResolveCanonPath_FromEnv_WhenCanonPathNull()
+    public void Knowledge_ResolveKnowledgeRoot_FromRuntime_WhenToolArgumentNull()
     {
-        using var temp = TempCanon.Create();
-        using var env = EnvVarScope.Set("AGENT_NOTES_CANON_PATH", temp.CanonPath);
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
         var storage = new NotesStorage();
-        storage.WriteKnowledgeFile(null, "env-canon-test.md", "from env");
-        Assert.Equal("from env", storage.ReadKnowledgeFile(null, "env-canon-test.md"));
+        storage.WriteKnowledgeFile(null, "runtime-root-test.md", "from runtime");
+        Assert.Equal("from runtime", storage.ReadKnowledgeFile(null, "runtime-root-test.md"));
     }
 
     [Fact]
-    public void Knowledge_ResolveCanonPath_ThrowsWhenNeitherCanonPathNorEnvSet()
+    public void Knowledge_ResolveKnowledgeRoot_ThrowsWhenNeitherArgumentNorRuntimeNorInferableNotesFile()
     {
-        using var clearCanon = EnvVarScope.Clear("AGENT_NOTES_CANON_PATH");
+        AgentNotesRuntime.ResetForTests();
         using var clearFile = EnvVarScope.Clear("AGENT_NOTES_FILE");
         var storage = new NotesStorage();
         Assert.Throws<ArgumentException>(() =>
@@ -218,33 +226,33 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
-    public void Knowledge_ResolveCanonPath_InferredFromAgentNotesFile_WhenCanonEnvUnset()
+    public void Knowledge_ResolveKnowledgeRoot_InferredFromAgentNotesFile_WhenRuntimeNotLoaded()
     {
-        using var temp = TempCanon.Create();
-        Directory.CreateDirectory(Path.Combine(temp.CanonPath, "knowledge"));
-        var notesPath = Path.Combine(temp.CanonPath, "agent-notes.md");
+        AgentNotesRuntime.ResetForTests();
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        Directory.CreateDirectory(Path.Combine(root.Path, "knowledge"));
+        var notesPath = Path.Combine(root.Path, "agent-notes.md");
         File.WriteAllText(notesPath, "# notes\n", Encoding.UTF8);
 
-        using var clearCanon = EnvVarScope.Clear("AGENT_NOTES_CANON_PATH");
         using var setFile = EnvVarScope.Set("AGENT_NOTES_FILE", notesPath);
         var storage = new NotesStorage();
-        storage.WriteKnowledgeFile(null, "from-inferred-canon.md", "body");
-        Assert.Equal("body", storage.ReadKnowledgeFile(null, "from-inferred-canon.md"));
+        storage.WriteKnowledgeFile(null, "from-inferred-root.md", "body");
+        Assert.Equal("body", storage.ReadKnowledgeFile(null, "from-inferred-root.md"));
     }
 
     [Fact]
-    public void ReadWrite_UsesAgentNotesUnderCanonRoot_WhenCanonEnvSetAndNotesFileUnset()
+    public void ReadWrite_UsesAgentNotesUnderPrimaryRoot_WhenTomlConfiguredAndNotesFileUnset()
     {
         using var ws = TempWorkspace.Create();
-        using var canon = TempCanon.Create();
-        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge"));
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
+        Directory.CreateDirectory(Path.Combine(root.Path, "knowledge"));
         using var clearFile = EnvVarScope.Clear("AGENT_NOTES_FILE");
-        using var setCanon = EnvVarScope.Set("AGENT_NOTES_CANON_PATH", canon.CanonPath);
         var storage = new NotesStorage();
-        var expectedNotes = Path.Combine(canon.CanonPath, "agent-notes.md");
+        var expectedNotes = Path.Combine(root.Path, "agent-notes.md");
 
-        Assert.Equal("OK", storage.Write(ws.WorkspacePath, "from-canon-env"));
-        Assert.Equal("from-canon-env", storage.Read(ws.WorkspacePath));
+        Assert.Equal("OK", storage.Write(ws.WorkspacePath, "from-toml-root"));
+        Assert.Equal("from-toml-root", storage.Read(ws.WorkspacePath));
         Assert.True(File.Exists(expectedNotes));
     }
 
@@ -274,17 +282,16 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
-    public void MemoryHealth_UsesWorkspaceScopeMapFromWorkLocal_WhenCanonEnvSet()
+    public void MemoryHealth_UsesWorkspaceScopeMapFromTomlWorkLocal()
     {
         using var ws = TempWorkspace.Create();
-        using var canon = TempCanon.Create();
-        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge"));
-        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge", "work", "local"));
-        var mapPath = Path.Combine(canon.CanonPath, "knowledge", "work", "local", "workspace-scope-map-v1.md");
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
+        Directory.CreateDirectory(Path.Combine(root.Path, "knowledge", "work", "local"));
+        var mapPath = Path.Combine(root.Path, "knowledge", "work", "local", "workspace-scope-map-v1.md");
         File.WriteAllText(mapPath, $"{Path.GetFullPath(ws.WorkspacePath)} => portal\n", Encoding.UTF8);
 
         using var clearFile = EnvVarScope.Clear("AGENT_NOTES_FILE");
-        using var setCanon = EnvVarScope.Set("AGENT_NOTES_CANON_PATH", canon.CanonPath);
         var storage = new NotesStorage();
 
         const string notesContent = """
@@ -300,29 +307,21 @@ ok
     }
 
     [Fact]
-    public void MemoryHealth_UsesWorkspaceScopeMapFromMcpResolvePathsConfig_WhenCustomRelativePath()
+    public void MemoryHealth_UsesWorkspaceScopeMapFromToml_WhenCustomRelativePath()
     {
         using var ws = TempWorkspace.Create();
-        using var canon = TempCanon.Create();
-        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge", "META"));
-        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge", "work", "custom-maps"));
-        var configPath = Path.Combine(canon.CanonPath, "knowledge", "META", "mcp-resolve-paths-v1.json");
-        File.WriteAllText(
-            configPath,
-            """
-            {
-              "version": 1,
-              "workspace_scope_map": "work/custom-maps/my-ws-map.md",
-              "scope_alias_map": "work/local/scope-alias-map-v1.md"
-            }
-            """.Trim(),
-            Encoding.UTF8);
-        var mapPath = Path.Combine(canon.CanonPath, "knowledge", "work", "custom-maps", "my-ws-map.md");
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        Directory.CreateDirectory(Path.Combine(root.Path, "knowledge", "work", "custom-maps"));
+        var mapPath = Path.Combine(root.Path, "knowledge", "work", "custom-maps", "my-ws-map.md");
         File.WriteAllText(mapPath, $"{Path.GetFullPath(ws.WorkspacePath)} => portal\n", Encoding.UTF8);
-        SeedTestScopeAliasDefaults(canon.CanonPath);
+        SeedTestScopeAliasDefaults(root.Path);
+        using var runtime = AgentNotesTestToml.Install(
+            AgentNotesTestToml.Write(
+                root.Path,
+                scopeMap: "work/custom-maps/my-ws-map.md",
+                scopeAliases: "work/local/scope-alias-map-v1.md"));
 
         using var clearFile = EnvVarScope.Clear("AGENT_NOTES_FILE");
-        using var setCanon = EnvVarScope.Set("AGENT_NOTES_CANON_PATH", canon.CanonPath);
         var storage = new NotesStorage();
 
         const string notesContent = """
@@ -338,19 +337,19 @@ ok
     }
 
     [Fact]
-    public void MemoryHealth_IgnoresInvalidMcpResolvePathsJson_AndUsesDefaultWorkspaceMap()
+    public void MemoryHealth_UsesEmbeddedWorkspaceMap_WhenRuntimeNotConfigured()
     {
+        AgentNotesRuntime.ResetForTests();
         using var ws = TempWorkspace.Create();
-        using var canon = TempCanon.Create();
-        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge", "META"));
-        Directory.CreateDirectory(Path.Combine(canon.CanonPath, "knowledge", "work", "local"));
-        File.WriteAllText(Path.Combine(canon.CanonPath, "knowledge", "META", "mcp-resolve-paths-v1.json"), "{ not-json", Encoding.UTF8);
-        var mapPath = Path.Combine(canon.CanonPath, "knowledge", "work", "local", "workspace-scope-map-v1.md");
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        Directory.CreateDirectory(Path.Combine(root.Path, "knowledge", "work", "local"));
+        var mapPath = Path.Combine(root.Path, "knowledge", "work", "local", "workspace-scope-map-v1.md");
         File.WriteAllText(mapPath, $"{Path.GetFullPath(ws.WorkspacePath)} => portal\n", Encoding.UTF8);
-        SeedTestScopeAliasDefaults(canon.CanonPath);
+        SeedTestScopeAliasDefaults(root.Path);
+        var notesPath = Path.Combine(root.Path, "agent-notes.md");
+        File.WriteAllText(notesPath, "# notes\n", Encoding.UTF8);
 
-        using var clearFile = EnvVarScope.Clear("AGENT_NOTES_FILE");
-        using var setCanon = EnvVarScope.Set("AGENT_NOTES_CANON_PATH", canon.CanonPath);
+        using var setFile = EnvVarScope.Set("AGENT_NOTES_FILE", notesPath);
         var storage = new NotesStorage();
 
         const string notesContent = """
@@ -653,37 +652,6 @@ ok
             catch (Exception ex)
             {
                 throw new InvalidOperationException($"Failed to cleanup test temp directory: {RootPath}", ex);
-            }
-        }
-    }
-
-    private sealed class TempCanon : IDisposable
-    {
-        private TempCanon(string canonPath)
-        {
-            CanonPath = canonPath;
-        }
-
-        internal string CanonPath { get; }
-
-        internal static TempCanon Create()
-        {
-            var path = Path.Combine(Path.GetTempPath(), "AgentNotesMcpTests", "canon", Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(path);
-            SeedTestScopeAliasDefaults(path);
-            return new TempCanon(path);
-        }
-
-        public void Dispose()
-        {
-            try
-            {
-                if (Directory.Exists(CanonPath))
-                    Directory.Delete(CanonPath, recursive: true);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to cleanup test canon: {CanonPath}", ex);
             }
         }
     }

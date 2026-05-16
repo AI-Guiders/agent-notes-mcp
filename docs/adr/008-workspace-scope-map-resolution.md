@@ -15,7 +15,7 @@
 
 ## Реализованный контракт (код)
 
-0. **Bootstrap путей (опционально на диске):** если под каноном есть **`knowledge/META/mcp-resolve-paths-v1.json`**, из него читаются относительные пути **`workspace_scope_map`** и **`scope_alias_map`**. **Дефолты** берутся из **embedded** `mcp-resolve-paths-defaults.json` в сборке AgentNotes.Core (как hot-context defaults); при отсутствии/ошибке дискового JSON — остаются дефолты из ресурса. Невалидные значения в дисковом JSON → откат к тем же дефолтам.
+0. **Bootstrap путей:** при загруженном **`--config`** (MCP 2.0) — **`[workspace].scope_map`** и **`scope_aliases`** из TOML. Без runtime (in-proc / тесты) — **embedded** `mcp-resolve-paths-defaults.json` в **AgentNotes.Core** (`work/local/...`). Файл **`knowledge/META/mcp-resolve-paths-v1.json`** в **2.0 не читается**.
 
 1. Если **`active_scope`** передан и не пустой — нормализация алиасов из файла по **`scope_alias_map`** (см. п.0). Встроенной таблицы в коде нет. Формат строк как у карты workspace: краткий ключ, затем `=>` / `:` / `=` и **канонический** id slice (совпадает с суффиксом секции `scope-<id>`). Строки-пути Windows в этот файл не кладутся (отфильтровываются).
 2. Иначе — **`TryResolveScopeFromWorkspaceMap`**: файл по **`workspace_scope_map`** (см. п.0); иначе содержимое секции **`workspace-scope-map-v1`** (fallback: legacy **`scope-map-v1`**); строки вида `path => scope`, самый длинный префикс пути к **`workspace_path`** выигрывает. Это **отдельная** ось: **путь → slice**, не алиасы коротких имён.
@@ -26,8 +26,7 @@
 
 ---
 
-## Планируемая эволюция
+## Эволюция
 
-- **Сейчас (legacy):** п.0 — `mcp-resolve-paths-v1.json` + embedded JSON в Core.
-- **Целевое ([014](014-agent-notes-local-settings-toml-v1.md), KB ADR 013):** **`[workspace].scope_map`** / **`scope_aliases`** в TOML; удалить чтение META JSON.
-- Карта и алиасы по-прежнему в markdown под primary canon; при смене алиасов — **`scope-alias-map-v1.md`** и тесты **`TestScopeAliasesMd`**.
+- **MCP 2.0 ([014](014-agent-notes-local-settings-toml-v1.md)):** п.0 — TOML `[workspace]`; META JSON удалён из кода.
+- Карта и алиасы по-прежнему в markdown под primary knowledge root; при смене алиасов — **`scope-alias-map-v1.md`** и тесты **`TestScopeAliasesMd`**.
