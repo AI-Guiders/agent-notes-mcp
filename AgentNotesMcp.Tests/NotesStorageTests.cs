@@ -218,7 +218,7 @@ public sealed class NotesStorageTests
     [Fact]
     public void Knowledge_ResolveKnowledgeRoot_ThrowsWhenNeitherArgumentNorRuntimeNorInferableNotesFile()
     {
-        AgentNotesRuntime.ResetForTests();
+        AgentNotesRuntime.ClearConfiguration();
         using var clearFile = EnvVarScope.Clear("AGENT_NOTES_FILE");
         var storage = new NotesStorage();
         Assert.Throws<ArgumentException>(() =>
@@ -228,7 +228,7 @@ public sealed class NotesStorageTests
     [Fact]
     public void Knowledge_ResolveKnowledgeRoot_InferredFromAgentNotesFile_WhenRuntimeNotLoaded()
     {
-        AgentNotesRuntime.ResetForTests();
+        AgentNotesRuntime.ClearConfiguration();
         using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
         Directory.CreateDirectory(Path.Combine(root.Path, "knowledge"));
         var notesPath = Path.Combine(root.Path, "agent-notes.md");
@@ -339,7 +339,7 @@ ok
     [Fact]
     public void MemoryHealth_UsesEmbeddedWorkspaceMap_WhenRuntimeNotConfigured()
     {
-        AgentNotesRuntime.ResetForTests();
+        AgentNotesRuntime.ClearConfiguration();
         using var ws = TempWorkspace.Create();
         using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
         Directory.CreateDirectory(Path.Combine(root.Path, "knowledge", "work", "local"));

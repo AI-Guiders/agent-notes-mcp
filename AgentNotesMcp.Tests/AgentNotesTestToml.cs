@@ -62,6 +62,6 @@ internal static class AgentNotesTestToml
 
     internal sealed class RuntimeScope : IDisposable
     {
-        public void Dispose() => AgentNotesRuntime.ResetForTests();
+        public void Dispose() => AgentNotesRuntime.ClearConfiguration();
     }
 }
