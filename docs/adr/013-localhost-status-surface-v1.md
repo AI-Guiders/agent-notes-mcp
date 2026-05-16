@@ -1,6 +1,6 @@
 # ADR 013: Localhost status surface (AgentNotesStatus)
 
-**Статус:** Proposed  
+**Статус:** Accepted (фаза 1–2: HTTP, HTML/JSON, ring buffer, `/hot-preview`, `--status-only`)  
 **Дата:** 2026-05-16  
 
 **Связано:** [008](008-workspace-scope-map-resolution.md); [014](014-agent-notes-local-settings-toml-v1.md) — секция **`[status]`** в локальном TOML (`--config`, с **MCP 2.0**); KB — `knowledge/adr/013-agent-notes-mcp-local-settings-toml-v1.md`.
@@ -28,6 +28,7 @@
 | `GET /` | HTML-сводка |
 | `GET /status.json` | JSON для скриптов |
 | `GET /health` | `200 OK` |
+| `GET /hot-preview` | JSON: размеры hot-секций (`?workspace_path=` или `[status.preview].workspace`) |
 
 По умолчанию **выключено** — см. **`[status].enabled`** в TOML из **`--config`** ([014](014-agent-notes-local-settings-toml-v1.md)).
 
@@ -79,7 +80,7 @@ Loopback only; без `personal/`, hot ниже `public-cut`, секретов; 
 |------|------------|
 | 0 | ADR + README |
 | 1 | Зависит от [014](014-agent-notes-local-settings-toml-v1.md) фаза 1 (Tomlyn); Kestrel minimal API; `[status]` |
-| 2 | Ring buffer последних tool calls; `GET /hot-preview` (размеры секций); `--status-only` CLI |
+| 2 | Ring buffer последних tool calls (в `status.json` + HTML); `GET /hot-preview`; CLI `--status-only` (только HTTP, без stdio MCP) |
 
 ---
 

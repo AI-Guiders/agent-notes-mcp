@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AgentNotesMcp.Status;
 using ModelContextProtocol.Protocol;
 using Tool = ModelContextProtocol.Protocol.Tool;
 
@@ -312,4 +313,9 @@ internal static class ToolCatalog
             })
         }
     ];
+
+    internal static IReadOnlyList<AgentNotesStatusSnapshot.ToolSummary> ListSummaries() =>
+        Build()
+            .Select(t => new AgentNotesStatusSnapshot.ToolSummary(t.Name, t.Description ?? ""))
+            .ToArray();
 }

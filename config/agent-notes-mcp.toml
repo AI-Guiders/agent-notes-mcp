@@ -23,7 +23,7 @@ scope_map = "work/local/workspace-scope-map-v1.md"
 scope_aliases = "work/local/scope-alias-map-v1.md"
 
 [status]
-enabled = false
+enabled = true
 port = 17341
 bind = "127.0.0.1"
 

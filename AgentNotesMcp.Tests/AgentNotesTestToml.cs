@@ -50,7 +50,7 @@ internal static class AgentNotesTestToml
     internal static RuntimeScope Install(string tomlPath)
     {
         var settings = LocalSettingsLoader.Load(tomlPath);
-        AgentNotesRuntime.Initialize(settings);
+        AgentNotesRuntime.Initialize(settings, tomlPath);
         return new RuntimeScope();
     }
 
