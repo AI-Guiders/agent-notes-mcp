@@ -12,6 +12,7 @@ primary = "personal"
 personal = "D:/Experiments/agent-notes"
 # org = "D:/clones/AI-Guiders/kb"
 
+# Опционально (схема 2.0; маршрутизация в тулах — позже, см. ADR 014 / KB ADR 013):
 # [[knowledge.read_only]]
 # id = "org"
 # path = "D:/clones/AI-Guiders/kb"

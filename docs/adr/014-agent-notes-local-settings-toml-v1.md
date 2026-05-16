@@ -118,6 +118,36 @@
 - Имена **файлов** в репо (`agent-notes.md`, каталог `knowledge/`) — без изменений.
 - ADR **012** title «multi-canon» — исторический документ; в новом коде не продлевать термин.
 
+### `[[knowledge.read_only]]` — схема в 2.0, маршрутизация позже
+
+Смысл и роли корней — **KB** [012-multi-canon-workspace-resolution-v1.md](https://github.com/AIGuiders/agent-notes/blob/main/knowledge/adr/012-multi-canon-workspace-resolution-v1.md) (исторически «secondary canon»). В TOML это **не** то же самое, что `[knowledge.roots]`:
+
+| Секция | Роль |
+|--------|------|
+| **`[knowledge].primary`** + **`[knowledge.roots]`** | Один **primary** knowledge root: hot-файл, **запись** в `knowledge/`, `[workspace]` (карта scope только из primary). |
+| **`[[knowledge.read_only]]`** | Дополнительные корни **только чтение** (org-kb, kb-public-клон): агент может **читать** карточки, **не** писать туда через MCP. Поле **`id`** — стабильная метка (`org`, `public`) для будущего выбора корня в тулах и на странице [013](013-localhost-status-surface-v1.md). |
+
+Пример (опционально в `--config`; в шаблоне `config/agent-notes-mcp.toml` — закомментирован):
+
+```toml
+[[knowledge.read_only]]
+id = "org"
+path = "D:/clones/AI-Guiders/kb"
+```
+
+**Релиз `2.0.0` (фактически в коде):**
+
+| Что | Статус |
+|-----|--------|
+| Парсинг Tomlyn → `LocalSettings.ReadOnlyKnowledgeRoots` | **да** |
+| `read_knowledge_file` / `write_*` / `list_knowledge_files` по `id` read-only | **нет** |
+| Запрет записи в read-only при явном `knowledge_path` | **нет** (пока один корень: primary или аргумент тула) |
+| `[routing]` / overlay org в `route_context` | **фаза 2** (KB ADR 013) |
+
+До multi-KB секцию **можно не заполнять** — поведение как с одним primary. Обязательный минимум конфига: `[knowledge]` + `[workspace]` (или embedded defaults для `[workspace]`).
+
+**Следующий шаг (не 2.0):** резолв `knowledge_path` / параметр `knowledge_root_id` → primary или read-only; `write_*` только в primary; status показывает список read-only roots.
+
 ---
 
 ## Критерии принятия
