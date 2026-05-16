@@ -29,11 +29,11 @@
 | `GET /status.json` | JSON для скриптов |
 | `GET /health` | `200 OK` |
 
-По умолчанию **выключено** — см. **`[status].enabled`** в [014](014-agent-notes-local-settings-toml-v1.md).
+По умолчанию **выключено** — см. **`[status].enabled`** в TOML из **`--config`** ([014](014-agent-notes-local-settings-toml-v1.md)).
 
 ### 2.2. Конфигурация status
 
-**Не** отдельный файл и **не** env-флаги. Только секция в workspace TOML:
+**Не** отдельный файл и **не** env. Секция в том же TOML, путь к которому задан в `mcp.json` как у DBHub:
 
 ```toml
 [status]
@@ -54,7 +54,7 @@ bind = "127.0.0.1"
 | Блок | Источник |
 |------|----------|
 | Версия MCP, PID, uptime | процесс |
-| `config_source` | путь к TOML ([014](014-agent-notes-local-settings-toml-v1.md)) |
+| `config_path` | абсолютный путь из **`--config`** ([014](014-agent-notes-local-settings-toml-v1.md)) |
 | Effective canon / notes path | слитые settings + legacy env («present / overridden») |
 | Scope, `memory_health` | существующий код; `?workspace_path=` или `[status.preview]` |
 | Карта workspace | метаданные (N правил), без полного дампа путей в HTML |
@@ -95,7 +95,7 @@ Loopback only; без `personal/`, hot ниже `public-cut`, секретов; 
 
 ## 5. Критерии принятия
 
-- `[status].enabled = true` → браузер по URL из runtime json показывает версию, canon, scope, `memory_health`, `config_source`.
+- `[status].enabled = true` + `--config` → браузер по URL из runtime json: версия, canon, scope, `memory_health`, `config_path`.
 - `enabled = false` → порт не слушается.
 - Smoke-тесты loopback.
 
