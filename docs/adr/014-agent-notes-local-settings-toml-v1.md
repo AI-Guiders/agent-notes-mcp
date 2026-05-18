@@ -129,12 +129,12 @@
 
 ### `[[knowledge.read_only]]` — схема в 2.0, маршрутизация позже
 
-Смысл и роли корней — **KB** [012-multi-canon-workspace-resolution-v1.md](https://github.com/AIGuiders/agent-notes/blob/main/knowledge/adr/012-multi-canon-workspace-resolution-v1.md) (исторически «secondary canon»). В TOML это **не** то же самое, что `[knowledge.roots]`:
+Смысл и роли корней — **KB** [012-multi-canon-workspace-resolution-v1.md](https://github.com/KarataevDmitry/personal-knowledge-base/blob/main/knowledge/adr/012-multi-canon-workspace-resolution-v1.md) (исторически «secondary canon»). В TOML это **не** то же самое, что `[knowledge.roots]`:
 
 | Секция | Роль |
 |--------|------|
 | **`[knowledge].primary`** + **`[knowledge.roots]`** | Один **primary** knowledge root: hot-файл, **запись** в `knowledge/`, `[workspace]` (карта scope только из primary). |
-| **`[[knowledge.read_only]]`** | Дополнительные корни **только чтение** (group-kb / `AIGuiders/kb`, kb-public-клон): агент может **читать** карточки, **не** писать туда через MCP. Поле **`id`** — стабильная метка (`group`, `public`) — см. chmod ugo в [015](015-multi-root-read-only-knowledge-routing-v1.md). |
+| **`[[knowledge.read_only]]`** | Дополнительные корни **только чтение** (group-kb / `AI-Guiders/kb`, kb-public-клон): агент может **читать** карточки, **не** писать туда через MCP. Поле **`id`** — стабильная метка (`group`, `public`) — см. chmod ugo в [015](015-multi-root-read-only-knowledge-routing-v1.md). |
 
 Пример (опционально в `--config`; в шаблоне `config/agent-notes-mcp.toml` — закомментирован):
 

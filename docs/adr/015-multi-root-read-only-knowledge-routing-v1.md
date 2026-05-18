@@ -2,7 +2,7 @@
 
 **Статус:** Accepted  
 **Дата:** 2026-05-18 (доп. 2026-05-18: реестр `work/local` + hot-указатель)  
-**Связано:** [014](014-agent-notes-local-settings-toml-v1.md) (TOML `[[knowledge.read_only]]`), KB [012-multi-canon-workspace-resolution-v1.md](https://github.com/AIGuiders/agent-notes/blob/main/knowledge/adr/012-multi-canon-workspace-resolution-v1.md), [011](https://github.com/AIGuiders/agent-notes/blob/main/knowledge/adr/011-aiguiders-org-collaborative-kb-repo-v1.md) (team KB → `AIGuiders/kb`)
+**Связано:** [014](014-agent-notes-local-settings-toml-v1.md) (TOML `[[knowledge.read_only]]`), KB [012-multi-canon-workspace-resolution-v1.md](https://github.com/KarataevDmitry/personal-knowledge-base/blob/main/knowledge/adr/012-multi-canon-workspace-resolution-v1.md), [011](https://github.com/KarataevDmitry/personal-knowledge-base/blob/main/knowledge/adr/011-aiguiders-org-collaborative-kb-repo-v1.md) (team KB → `AI-Guiders/kb`)
 
 ---
 
@@ -17,7 +17,7 @@
 | chmod | Роль | `knowledge_root_id` | Репозиторий |
 |-------|------|----------------------|-------------|
 | **u** (user) | личный primary, запись, hot | *(default / primary)* | `agent-notes` |
-| **g** (group) | командная коллаборативная KB | **`group`** | **`AIGuiders/kb`** (private) |
+| **g** (group) | командная коллаборативная KB | **`group`** | **`AI-Guiders/kb`** (private) |
 | **o** (other) | публичный срез | **`public`** (read_only) | `kb-public` |
 
 ## Решение (MCP)
@@ -59,7 +59,7 @@
 
 ## group-kb (smoke)
 
-Локальный шаблон: `Financial/software/open/group-kb` (целевой remote — **`AIGuiders/kb`**, private).
+Локальный шаблон: `Financial/software/open/group-kb` (целевой remote — **`AI-Guiders/kb`**, private).
 
 ```toml
 [[knowledge.read_only]]
