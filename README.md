@@ -45,6 +45,7 @@ dotnet publish AgentNotesMcp.csproj -c Release -o publish
 | Локальный TOML (`--config`) | **[docs/adr/014-agent-notes-local-settings-toml-v1.md](docs/adr/014-agent-notes-local-settings-toml-v1.md)** |
 | Правила для `.cursor/rules` (Integrity POST, канон KB) | **[docs/cursor-rules-examples.md](docs/cursor-rules-examples.md)** |
 | ADR по MCP и KB | **[docs/adr/](docs/adr/)** (канон также в репо **agent-notes**, `knowledge/adr/`) |
+| Чистая установка (новый пользователь) | Playbook: `knowledge/domains/agent-operations/playbook-knowledge-stack-clean-setup-v1.md`; шаблоны: `knowledge/templates/newcomer/` (kb-public) |
 | Сборка и релизы (PowerShell), зеркала Git | **[docs/publishing-and-ci.md](docs/publishing-and-ci.md)** |
 
 ## Возможности (сжато)

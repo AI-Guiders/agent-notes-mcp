@@ -200,13 +200,14 @@ internal static class ToolCatalog
         new()
         {
             Name = "write_knowledge_file",
-            Description = "Записать файл в каталог knowledge/ (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Корень KB: knowledge_path или primary из --config.",
+            Description = "Записать файл в каталог knowledge/ (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Запись только в primary; read-only roots (knowledge_root_id=group) отклоняются.",
             InputSchema = Schema(new
             {
                 type = "object",
                 properties = new
                 {
-                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: primary из --config. Не задавать вместе с knowledge_root_id." },
+                    knowledge_root_id = new { type = "string", description = "Опционально. id из [knowledge.roots] или [[knowledge.read_only]] (напр. group). Чтение — любой корень; запись — только primary (user)." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например kb-music-acoustics-v1.md (без '..' и без абсолютного пути)." },
                     content = new { type = "string", description = "Полное содержимое файла." },
                     save_revision = new { type = "boolean", description = "Сохранить текущую версию в knowledge/.revisions/ перед записью (по умолчанию true)." }
@@ -223,7 +224,8 @@ internal static class ToolCatalog
                 type = "object",
                 properties = new
                 {
-                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: primary из --config. Не задавать вместе с knowledge_root_id." },
+                    knowledge_root_id = new { type = "string", description = "Опционально. id из [knowledge.roots] или [[knowledge.read_only]] (напр. group). Чтение — любой корень; запись — только primary (user)." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/." },
                     content = new { type = "string", description = "Текст для добавления в конец файла (перед ним при необходимости добавляется перевод строки)." },
                     save_revision = new { type = "boolean", description = "Сохранить текущую версию в knowledge/.revisions/ перед добавлением (по умолчанию true)." }
@@ -240,7 +242,8 @@ internal static class ToolCatalog
                 type = "object",
                 properties = new
                 {
-                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: primary из --config. Не задавать вместе с knowledge_root_id." },
+                    knowledge_root_id = new { type = "string", description = "Опционально. id из [knowledge.roots] или [[knowledge.read_only]] (напр. group). Чтение — любой корень; запись — только primary (user)." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например index-knowledge-router-v1.md." },
                     section_id = new { type = "string", description = "Стабильный ID секции (A-Za-z0-9._-)." },
                     content = new { type = "string", description = "Новое содержимое секции." },
@@ -258,7 +261,8 @@ internal static class ToolCatalog
                 type = "object",
                 properties = new
                 {
-                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: primary из --config. Не задавать вместе с knowledge_root_id." },
+                    knowledge_root_id = new { type = "string", description = "Опционально. id из [knowledge.roots] или [[knowledge.read_only]] (напр. group). Чтение — любой корень; запись — только primary (user)." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например mcp-test-irl.md." }
                 },
                 required = new[] { "file_path" }
@@ -273,7 +277,8 @@ internal static class ToolCatalog
                 type = "object",
                 properties = new
                 {
-                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: primary из --config. Не задавать вместе с knowledge_root_id." },
+                    knowledge_root_id = new { type = "string", description = "Опционально. id из [knowledge.roots] или [[knowledge.read_only]] (напр. group). Чтение — любой корень; запись — только primary (user)." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/." },
                     section_id = new { type = "string", description = "ID секции для удаления (A-Za-z0-9._-)." }
                 },
@@ -283,13 +288,14 @@ internal static class ToolCatalog
         new()
         {
             Name = "read_knowledge_file",
-            Description = "Прочитать файл из каталога knowledge/. Корень KB: knowledge_path или primary из --config. Возвращает содержимое или пустую строку. Опционально offset (1-based) и limit. Для протоколов: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md (route_context их не подставляет автоматически).",
+            Description = "Прочитать файл из каталога knowledge/. Корень: knowledge_path, knowledge_root_id (group, …) или primary из --config. Возвращает содержимое или пустую строку. Опционально offset (1-based) и limit. Для протоколов: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md (route_context их не подставляет автоматически).",
             InputSchema = Schema(new
             {
                 type = "object",
                 properties = new
                 {
-                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: primary из --config. Не задавать вместе с knowledge_root_id." },
+                    knowledge_root_id = new { type = "string", description = "Опционально. id из [knowledge.roots] или [[knowledge.read_only]] (напр. group). Чтение — любой корень; запись — только primary (user)." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например kb-music-theory-fundamentals-v1.md." },
                     offset = new { type = "integer", description = "Опционально. Номер первой возвращаемой строки, нумерация с 1. Без offset и limit — весь файл." },
                     limit = new { type = "integer", description = "Опционально. Максимум строк в ответе (после offset). 0 = пусто. Без limit — до конца файла." }
@@ -306,7 +312,8 @@ internal static class ToolCatalog
                 type = "object",
                 properties = new
                 {
-                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: по умолчанию primary root из --config." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: primary из --config. Не задавать вместе с knowledge_root_id." },
+                    knowledge_root_id = new { type = "string", description = "Опционально. id из [knowledge.roots] или [[knowledge.read_only]] (напр. group). Чтение — любой корень; запись — только primary (user)." },
                     subdir = new { type = "string", description = "Подкаталог внутри knowledge/ (пусто = весь knowledge/). Например work." }
                 },
                 required = Array.Empty<string>()

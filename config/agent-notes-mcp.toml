@@ -12,10 +12,10 @@ primary = "personal"
 personal = "D:/Experiments/agent-notes"
 # org = "D:/clones/AI-Guiders/kb"
 
-# Опционально (схема 2.0; маршрутизация в тулах — позже, см. ADR 014 / KB ADR 013):
-# [[knowledge.read_only]]
-# id = "org"
-# path = "D:/clones/AI-Guiders/kb"
+# Read-only group-kb (ADR 015, chmod g): read_knowledge_file(..., knowledge_root_id: "group")
+[[knowledge.read_only]]
+id = "group"
+path = "D:/Experiments/PersonalCursorFolder/Financial/software/open/group-kb"
 
 [workspace]
 default_scope = "mixed"
