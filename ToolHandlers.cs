@@ -146,67 +146,75 @@ internal sealed class ToolHandlers
     private string WriteKnowledgeFile(IReadOnlyDictionary<string, JsonElement> args)
     {
         var knowledgePath = ToolArgs.OptionalKnowledgePath(args);
+        var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
         var filePath = ToolArgs.RequiredString(args, "file_path");
         var content = ToolArgs.RequiredString(args, "content");
         var saveRevision = ToolArgs.GetBoolOrDefault(args, "save_revision", true);
-        return _storage.WriteKnowledgeFile(knowledgePath, filePath, content, saveRevision);
+        return _storage.WriteKnowledgeFile(knowledgePath, filePath, content, saveRevision, knowledgeRootId);
     }
 
     private string AppendKnowledgeFile(IReadOnlyDictionary<string, JsonElement> args)
     {
         var knowledgePath = ToolArgs.OptionalKnowledgePath(args);
+        var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
         var filePath = ToolArgs.RequiredString(args, "file_path");
         var content = ToolArgs.RequiredString(args, "content");
         var saveRevision = ToolArgs.GetBoolOrDefault(args, "save_revision", true);
-        return _storage.AppendKnowledgeFile(knowledgePath, filePath, content, saveRevision);
+        return _storage.AppendKnowledgeFile(knowledgePath, filePath, content, saveRevision, knowledgeRootId);
     }
 
     private string UpsertKnowledgeSection(IReadOnlyDictionary<string, JsonElement> args)
     {
         var knowledgePath = ToolArgs.OptionalKnowledgePath(args);
+        var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
         var filePath = ToolArgs.RequiredString(args, "file_path");
         var sectionId = ToolArgs.RequiredString(args, "section_id");
         var content = ToolArgs.RequiredString(args, "content");
         var saveRevision = ToolArgs.GetBoolOrDefault(args, "save_revision", true);
         if (!ToolArgs.IsValidSectionId(sectionId))
             throw new ArgumentException("section_id must match ^[A-Za-z0-9._-]+$.");
-        return _storage.UpsertKnowledgeSection(knowledgePath, filePath, sectionId, content, saveRevision);
+        return _storage.UpsertKnowledgeSection(knowledgePath, filePath, sectionId, content, saveRevision, knowledgeRootId);
     }
 
     private string DeleteKnowledgeSection(IReadOnlyDictionary<string, JsonElement> args)
     {
         var knowledgePath = ToolArgs.OptionalKnowledgePath(args);
+        var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
         var filePath = ToolArgs.RequiredString(args, "file_path");
         var sectionId = ToolArgs.RequiredString(args, "section_id");
         if (!ToolArgs.IsValidSectionId(sectionId))
             throw new ArgumentException("section_id must match ^[A-Za-z0-9._-]+$.");
-        return _storage.DeleteKnowledgeSection(knowledgePath, filePath, sectionId);
+        return _storage.DeleteKnowledgeSection(knowledgePath, filePath, sectionId, knowledgeRootId);
     }
 
     private string DeleteKnowledgeFile(IReadOnlyDictionary<string, JsonElement> args)
     {
         var knowledgePath = ToolArgs.OptionalKnowledgePath(args);
+        var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
         var filePath = ToolArgs.RequiredString(args, "file_path");
-        return _storage.DeleteKnowledgeFile(knowledgePath, filePath);
+        return _storage.DeleteKnowledgeFile(knowledgePath, filePath, knowledgeRootId);
     }
 
     private string ReadKnowledgeFile(IReadOnlyDictionary<string, JsonElement> args)
     {
         var knowledgePath = ToolArgs.OptionalKnowledgePath(args);
+        var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
         var filePath = ToolArgs.RequiredString(args, "file_path");
         // offset: first line to return, 1-based (like an editor). limit: max lines; 0 = empty; absent = to EOF.
         var offsetLine = ToolArgs.OptionalClampedInt(args, "offset", 1, 10_000_000);
         var limitLines = ToolArgs.OptionalClampedInt(args, "limit", 0, 10_000_000);
-        if (offsetLine is null && limitLines is null) return _storage.ReadKnowledgeFile(knowledgePath, filePath);
+        if (offsetLine is null && limitLines is null)
+            return _storage.ReadKnowledgeFile(knowledgePath, filePath, knowledgeRootId: knowledgeRootId);
         var from = offsetLine ?? 1;
         int? take = limitLines;
-        return _storage.ReadKnowledgeFile(knowledgePath, filePath, from, take);
+        return _storage.ReadKnowledgeFile(knowledgePath, filePath, from, take, knowledgeRootId);
     }
 
     private string ListKnowledgeFiles(IReadOnlyDictionary<string, JsonElement> args)
     {
         var knowledgePath = ToolArgs.OptionalKnowledgePath(args);
+        var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
         var subdir = ToolArgs.OptionalString(args, "subdir");
-        return _storage.ListKnowledgeFiles(knowledgePath, subdir);
+        return _storage.ListKnowledgeFiles(knowledgePath, subdir, knowledgeRootId);
     }
 }

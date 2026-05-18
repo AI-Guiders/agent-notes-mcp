@@ -167,7 +167,7 @@ internal sealed class AgentNotesStatusSnapshot
                 NotesExists = File.Exists(notesPath),
                 NamedRoots = named,
                 ReadOnlyRoots = readOnly,
-                ReadOnlyRoutingEnabled = false
+                ReadOnlyRoutingEnabled = readOnly.Length > 0
             };
         }
 

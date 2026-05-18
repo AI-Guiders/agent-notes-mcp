@@ -77,7 +77,7 @@ internal static class AgentNotesStatusHtmlRenderer
         AppendCard(sb, "Knowledge", [
             ("Primary root", $"<code class=\"path\">{E(snapshot.Knowledge.PrimaryRoot)}</code>"),
             ("agent-notes.md", $"{YesNo(snapshot.Knowledge.NotesExists)} — <code class=\"path\">{E(snapshot.Knowledge.NotesPath)}</code>"),
-            ("Read-only routing", snapshot.Knowledge.ReadOnlyRoutingEnabled ? "включён" : "<span class=\"muted\">выкл (2.0)</span>"),
+            ("Read-only routing", snapshot.Knowledge.ReadOnlyRoutingEnabled ? "включён (knowledge_root_id)" : "<span class=\"muted\">выкл</span>"),
             ("Read-only roots", FormatReadOnlyRoots(snapshot.Knowledge.ReadOnlyRoots))
         ]);
 

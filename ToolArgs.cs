@@ -24,6 +24,9 @@ internal static class ToolArgs
     internal static string? OptionalKnowledgePath(IReadOnlyDictionary<string, JsonElement> args) =>
         OptionalString(args, "knowledge_path");
 
+    internal static string? OptionalKnowledgeRootId(IReadOnlyDictionary<string, JsonElement> args) =>
+        OptionalString(args, "knowledge_root_id");
+
     internal static int GetIntOrDefault(IReadOnlyDictionary<string, JsonElement> args, string key, int defaultValue, int min, int max)
     {
         if (!args.TryGetValue(key, out var raw))

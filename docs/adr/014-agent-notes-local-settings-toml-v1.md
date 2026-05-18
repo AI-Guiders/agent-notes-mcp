@@ -134,13 +134,13 @@
 | Секция | Роль |
 |--------|------|
 | **`[knowledge].primary`** + **`[knowledge.roots]`** | Один **primary** knowledge root: hot-файл, **запись** в `knowledge/`, `[workspace]` (карта scope только из primary). |
-| **`[[knowledge.read_only]]`** | Дополнительные корни **только чтение** (org-kb, kb-public-клон): агент может **читать** карточки, **не** писать туда через MCP. Поле **`id`** — стабильная метка (`org`, `public`) для будущего выбора корня в тулах и на странице [013](013-localhost-status-surface-v1.md). |
+| **`[[knowledge.read_only]]`** | Дополнительные корни **только чтение** (group-kb / `AIGuiders/kb`, kb-public-клон): агент может **читать** карточки, **не** писать туда через MCP. Поле **`id`** — стабильная метка (`group`, `public`) — см. chmod ugo в [015](015-multi-root-read-only-knowledge-routing-v1.md). |
 
 Пример (опционально в `--config`; в шаблоне `config/agent-notes-mcp.toml` — закомментирован):
 
 ```toml
 [[knowledge.read_only]]
-id = "org"
+id = "group"
 path = "D:/clones/AI-Guiders/kb"
 ```
 
@@ -149,13 +149,13 @@ path = "D:/clones/AI-Guiders/kb"
 | Что | Статус |
 |-----|--------|
 | Парсинг Tomlyn → `LocalSettings.ReadOnlyKnowledgeRoots` | **да** |
-| `read_knowledge_file` / `write_*` / `list_knowledge_files` по `id` read-only | **нет** |
-| Запрет записи в read-only при явном `knowledge_path` | **нет** (пока один корень: primary или аргумент тула) |
+| `read_knowledge_file` / `list_knowledge_files` по `knowledge_root_id` read-only | **да** ([015](015-multi-root-read-only-knowledge-routing-v1.md), 2.1) |
+| Запрет записи в read-only при `knowledge_root_id` или `knowledge_path` | **да** (2.1) |
 | `[routing]` / overlay org в `route_context` | **фаза 2** (KB ADR 013) |
 
 До multi-KB секцию **можно не заполнять** — поведение как с одним primary. Обязательный минимум конфига: `[knowledge]` + `[workspace]` (или embedded defaults для `[workspace]`).
 
-**Следующий шаг (не 2.0):** резолв `knowledge_path` / параметр `knowledge_root_id` → primary или read-only; `write_*` только в primary; status показывает список read-only roots.
+**Следующий шаг (2.1, ADR 015):** резолв `knowledge_root_id` → primary (**user**) или read-only (**group**); `write_*` только в primary; status `read_only_routing_enabled`. **Фаза 2:** overlay group в `route_context`.
 
 ---
 

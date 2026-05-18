@@ -58,7 +58,7 @@
 
 ### `write_knowledge_file`
 
-Записать файл в каталог knowledge/ (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Корень KB: knowledge_path или primary из --config.
+Записать файл в каталог knowledge/ (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Запись только в primary; read-only roots (knowledge_root_id=group) отклоняются.
 
 ### `append_knowledge_file`
 
@@ -78,7 +78,7 @@
 
 ### `read_knowledge_file`
 
-Прочитать файл из каталога knowledge/. Корень KB: knowledge_path или primary из --config. Возвращает содержимое или пустую строку. Опционально offset (1-based) и limit. Для протоколов: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md (route_context их не подставляет автоматически).
+Прочитать файл из каталога knowledge/. Корень: knowledge_path, knowledge_root_id (group, …) или primary из --config. Возвращает содержимое или пустую строку. Опционально offset (1-based) и limit. Для протоколов: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md (route_context их не подставляет автоматически).
 
 ### `list_knowledge_files`
 
