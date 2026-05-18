@@ -1,4 +1,4 @@
-# Локальные настройки agent-notes-mcp 2.0 (schema file version = 1).
+# Локальные настройки agent-notes-mcp 2.1 (schema file version = 1).
 # SSOT для publish: копируется в D:\agent-notes-mcp\agent-notes-mcp.toml (см. publish-and-deploy.ps1).
 # Cursor mcp.json:
 #   "args": ["--config", "D:/agent-notes-mcp/agent-notes-mcp.toml"], "env": {}
@@ -13,9 +13,12 @@ personal = "D:/Experiments/agent-notes"
 # org = "D:/clones/AI-Guiders/kb"
 
 # Read-only group-kb (ADR 015, chmod g): read_knowledge_file(..., knowledge_root_id: "group")
+# Smoke: knowledge/work/local/multi-root-group-smoke-v1.md
 [[knowledge.read_only]]
 id = "group"
 path = "D:/Experiments/PersonalCursorFolder/Financial/software/open/group-kb"
+# Clone test (same commit as group-kb): uncomment and restart MCP
+# path = "D:/Experiments/PersonalCursorFolder/Financial/software/open/group-kb-clone"
 
 [workspace]
 default_scope = "mixed"

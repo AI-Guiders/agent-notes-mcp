@@ -1,6 +1,6 @@
 # Agent Notes MCP
 
-[MCP](https://modelcontextprotocol.io)-сервер для **hot-заметок** (`agent-notes.md`) и **слоя `knowledge/`** (чтение/запись карточек и плейбуков). Версия **2.0** настраивается через **локальный TOML** (`--config`), как DBHub.
+[MCP](https://modelcontextprotocol.io)-сервер для **hot-заметок** (`agent-notes.md`) и **слоя `knowledge/`** (чтение/запись карточек и плейбуков). Версия **2.1** (Core **AIGuiders.AgentNotes.Core** 2.1.0, multi-root read-only) настраивается через **локальный TOML** (`--config`), как DBHub.
 
 ## Быстрый старт
 

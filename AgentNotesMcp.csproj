@@ -16,10 +16,12 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="AIGuiders.AgentNotes.Core" Version="2.1.1" Condition="'$(UseProjectReference)' != 'true'" />
     <PackageReference Include="ModelContextProtocol" Version="0.8.0-preview.1" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- Local Core work: dotnet build -p:UseProjectReference=true -->
+  <ItemGroup Condition="'$(UseProjectReference)' == 'true'">
     <ProjectReference Include="..\agent-notes-core\AgentNotes.Core.csproj" />
   </ItemGroup>
 

@@ -55,6 +55,11 @@ public sealed class MultiRootKnowledgeTests
         Assert.Contains("not both", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    internal static AgentNotesTestToml.RuntimeScope InstallWithReadOnlyPublic(string primaryPath, string groupPath) =>
+        InstallWithReadOnly(primaryPath, groupPath);
+
+    internal static GroupKbRoot CreateGroupKbRootPublic() => CreateGroupKbRoot();
+
     private static AgentNotesTestToml.RuntimeScope InstallWithReadOnly(
         string primaryPath,
         string groupPath)
@@ -100,7 +105,7 @@ public sealed class MultiRootKnowledgeTests
         return new GroupKbRoot(path);
     }
 
-    private sealed class GroupKbRoot(string path) : IDisposable
+    internal sealed class GroupKbRoot(string path) : IDisposable
     {
         internal string Path { get; } = path;
 

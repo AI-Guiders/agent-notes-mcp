@@ -51,13 +51,11 @@
 - `user` или отсутствие второй части = primary (после import в personal строку убрать или сменить на `user`)
 - Строки с `#` — комментарии; без полнотекстовых копий playbook из group
 
-### Поток агента (фаза 1, без overlay в MCP)
+### Поток агента
 
-1. `route_context` → секция **`knowledge-roots-routing-v1`** в hot.
-2. При необходимости `read_knowledge_file("work/local/knowledge-roots-index-v1.md")` на primary.
+1. `route_context` — при запросе про group/public/roots/chmod/registry или совпадении строки реестра MCP подмешивает hot-секцию **`knowledge-roots-routing-v1`**, хиты из `work/local/knowledge-roots-index-v1.md` и короткий preview из read-only root (`knowledge_roots_overlay_applied` в JSON).
+2. Явно при необходимости: `read_knowledge_file("work/local/knowledge-roots-index-v1.md")` на primary.
 3. Для строк `foo.md => group` → `read_knowledge_file("foo.md", knowledge_root_id: "group")`.
-
-**Фаза 2:** MCP подмешивает реестр / group-секции в `route_context` автоматически.
 
 ## group-kb (smoke)
 
@@ -71,9 +69,8 @@ path = "D:/Experiments/PersonalCursorFolder/Financial/software/open/group-kb"
 
 Проверка: `read_knowledge_file` + `file_path=group/smoke-test-v1.md` + `knowledge_root_id=group`.
 
-## Не в scope (фаза 2)
+## Не в scope
 
-- `route_context` overlay по group-kb / реестру без явного чтения реестра.
 - Авто-merge group → user (personal).
 
 ## Критерии принятия

@@ -36,9 +36,10 @@ else if (localSettings!.Status.Enabled && statusError is not null)
     Console.Error.WriteLine($"AgentNotesStatus: failed to start ({statusError}). MCP continues without HTTP status.");
 }
 
+var mcpVersion = typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "2.1.0";
 var options = new McpServerOptions
 {
-    ServerInfo = new Implementation { Name = "AgentNotesMcp", Version = "2.0.0" },
+    ServerInfo = new Implementation { Name = "AgentNotesMcp", Version = mcpVersion },
     ProtocolVersion = "2024-11-05",
     Capabilities = new ServerCapabilities
     {
