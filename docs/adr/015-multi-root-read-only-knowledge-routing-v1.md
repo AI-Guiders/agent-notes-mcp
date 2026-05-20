@@ -47,7 +47,7 @@
 
 ### Формат реестра
 
-- Одна строка — одна запись: `relative/path/under/knowledge/ => group`
+- Одна строка — одна запись: `relative/path/under/knowledge/ => group` (без `/` в конце — один файл; с `/` в конце — префикс каталога, см. AgentNotes.Core ADR 016, Core 2.1.2+)
 - `user` или отсутствие второй части = primary (после import в personal строку убрать или сменить на `user`)
 - Строки с `#` — комментарии; без полнотекстовых копий playbook из group
 

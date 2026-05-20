@@ -32,6 +32,31 @@ public sealed class KnowledgeRootsRouteContextTests
     }
 
     [Fact]
+    public void RouteContext_IncludesPrefixRegistry_WhenQueryMatchesCatalogSegment()
+    {
+        using var primary = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var group = CreateGroupKbWithOpenStackPrefix();
+        using var runtime = MultiRootKnowledgeTests.InstallWithReadOnlyPublic(primary.Path, group.Path);
+        SeedKnowledgeRootsRoutingWithPrefix(primary.Path);
+
+        var storage = new NotesStorage();
+        var workspace = Path.Combine(Path.GetTempPath(), "AgentNotesMcpTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(workspace);
+
+        var json = storage.RouteContext(workspace, "aiguiders-open mission cards", null, maxSections: 8, maxChars: 12000);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        Assert.True(root.GetProperty("knowledge_roots_overlay_applied").GetBoolean());
+        Assert.True(root.GetProperty("knowledge_roots_registry_hits").GetInt32() >= 1);
+
+        var assembled = root.GetProperty("assembled_context").GetString() ?? "";
+        Assert.Contains("Prefix:", assembled, StringComparison.Ordinal);
+        Assert.Contains("aiguiders-open", assembled, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("open-stack hub", assembled, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void RouteContext_NoOverlay_WhenUnrelatedQueryAndNoRegistryMatch()
     {
         using var primary = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
@@ -54,12 +79,41 @@ public sealed class KnowledgeRootsRouteContextTests
         Assert.DoesNotContain("knowledge_root_id=group", assembled);
     }
 
-    private static void SeedKnowledgeRootsRouting(string primaryPath)
+    private static MultiRootKnowledgeTests.GroupKbRoot CreateGroupKbWithOpenStackPrefix()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "AgentNotesMcpTests", "group-kb", Guid.NewGuid().ToString("N"));
+        var openDir = Path.Combine(path, "knowledge", "work", "projects", "aiguiders-open");
+        Directory.CreateDirectory(Path.Combine(path, "knowledge", "group"));
+        Directory.CreateDirectory(openDir);
+        File.WriteAllText(
+            Path.Combine(path, "knowledge", "group", "smoke-test-v1.md"),
+            "# Group KB smoke\n\ngroup-kb smoke test content.\n",
+            Encoding.UTF8);
+        File.WriteAllText(
+            Path.Combine(openDir, "README.md"),
+            "# Open stack hub\n\nopen-stack hub for tests.\n",
+            Encoding.UTF8);
+        File.WriteAllText(Path.Combine(path, "agent-notes.md"), "# Group hot (stub)\n", Encoding.UTF8);
+        return new MultiRootKnowledgeTests.GroupKbRoot(path);
+    }
+
+    private static void SeedKnowledgeRootsRouting(string primaryPath) =>
+        WriteKnowledgeRootsIndex(primaryPath, "group/smoke-test-v1.md => group\n");
+
+    private static void SeedKnowledgeRootsRoutingWithPrefix(string primaryPath) =>
+        WriteKnowledgeRootsIndex(
+            primaryPath,
+            """
+            group/smoke-test-v1.md => group
+            work/projects/aiguiders-open/ => group
+            """);
+
+    private static void WriteKnowledgeRootsIndex(string primaryPath, string body)
     {
         Directory.CreateDirectory(Path.Combine(primaryPath, "knowledge", "work", "local"));
         File.WriteAllText(
             Path.Combine(primaryPath, "knowledge", "work", "local", "knowledge-roots-index-v1.md"),
-            "group/smoke-test-v1.md => group\n",
+            body,
             Encoding.UTF8);
 
         File.WriteAllText(

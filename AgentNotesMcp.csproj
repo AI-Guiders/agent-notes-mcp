@@ -11,12 +11,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>AgentNotesMcp</RootNamespace>
     <AssemblyName>AgentNotesMcp</AssemblyName>
-    <Version>2.1.0</Version>
+    <Version>2.1.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="AIGuiders.AgentNotes.Core" Version="2.1.1" Condition="'$(UseProjectReference)' != 'true'" />
+    <PackageReference Include="AIGuiders.AgentNotes.Core" Version="2.1.2" Condition="'$(UseProjectReference)' != 'true'" />
     <PackageReference Include="ModelContextProtocol" Version="0.8.0-preview.1" />
   </ItemGroup>
 
