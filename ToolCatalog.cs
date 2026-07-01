@@ -120,6 +120,21 @@ internal static class ToolCatalog
         },
         new()
         {
+            Name = "delete_agent_notes_section",
+            Description = "Удалить секцию заметок по section_id (блок между <!-- section:ID --> и <!-- /section:ID -->). Если секции нет — NO_CHANGES. Путь hot-файла — как у read_agent_notes; перед удалением сохраняется ревизия.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    workspace_path = new { type = "string", description = "Каталог workspace (тот же, что при read/write)." },
+                    section_id = new { type = "string", description = "ID секции для удаления (A-Za-z0-9._-)." }
+                },
+                required = new[] { "workspace_path", "section_id" }
+            })
+        },
+        new()
+        {
             Name = "list_agent_notes_revisions",
             Description = "Список ревизий заметок для rollback. Ревизии хранятся рядом с файлом заметок в подпапке .revisions.",
             InputSchema = Schema(new

@@ -49,6 +49,25 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
+    public void DeleteSection_RemovesBlock_ReturnsNoChangesWhenMissing()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+
+        Assert.Equal("OK", storage.Write(temp.WorkspacePath,
+            "head\n\n<!-- section:to-remove -->\nbody\n<!-- /section:to-remove -->\n\ntail"));
+        Assert.Equal("OK", storage.DeleteSection(temp.WorkspacePath, "to-remove"));
+
+        var after = storage.Read(temp.WorkspacePath);
+        Assert.DoesNotContain("<!-- section:to-remove -->", after);
+        Assert.DoesNotContain("body", after);
+        Assert.Contains("head", after);
+        Assert.Contains("tail", after);
+        Assert.Equal("NO_CHANGES", storage.DeleteSection(temp.WorkspacePath, "to-remove"));
+    }
+
+    [Fact]
     public void Search_IsCaseInsensitive_AndRespectsHeadLimit()
     {
         using var temp = TempWorkspace.Create();

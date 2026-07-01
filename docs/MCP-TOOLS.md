@@ -36,6 +36,10 @@
 
 Точечно вставить/обновить секцию заметок по section_id без полной перезаписи файла. Секция оформляется маркерами <!-- section:ID --> ... <!-- /section:ID -->. Путь hot-файла — как у read_agent_notes.
 
+### `delete_agent_notes_section`
+
+Удалить секцию заметок по section_id (блок между <!-- section:ID --> и <!-- /section:ID -->). Если секции нет — NO_CHANGES. Путь hot-файла — как у read_agent_notes; перед удалением сохраняется ревизия.
+
 ### `list_agent_notes_revisions`
 
 Список ревизий заметок для rollback. Ревизии хранятся рядом с файлом заметок в подпапке .revisions.

@@ -15,6 +15,7 @@ internal sealed class ToolHandlers
             "write_agent_notes" or
             "append_agent_notes" or
             "upsert_agent_notes_section" or
+            "delete_agent_notes_section" or
             "rollback_agent_notes" or
             "compact_hot_context" or
             "write_knowledge_file" or
@@ -33,6 +34,7 @@ internal sealed class ToolHandlers
             "read_agent_notes" => Read(args),
             "read_hot_context" => ReadHotContext(args),
             "upsert_agent_notes_section" => UpsertSection(args),
+            "delete_agent_notes_section" => DeleteSection(args),
             "list_agent_notes_revisions" => ListRevisions(args),
             "rollback_agent_notes" => Rollback(args),
             "search_agent_notes" => Search(args),
@@ -95,6 +97,17 @@ internal sealed class ToolHandlers
             throw new ArgumentException("section_id must match ^[A-Za-z0-9._-]+$.");
 
         return _storage.UpsertSection(workspacePath, sectionId, content);
+    }
+
+    private string DeleteSection(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var workspacePath = ToolArgs.RequiredString(args, "workspace_path");
+        var sectionId = ToolArgs.RequiredString(args, "section_id");
+
+        if (!ToolArgs.IsValidSectionId(sectionId))
+            throw new ArgumentException("section_id must match ^[A-Za-z0-9._-]+$.");
+
+        return _storage.DeleteSection(workspacePath, sectionId);
     }
 
     private string ListRevisions(IReadOnlyDictionary<string, JsonElement> args)
