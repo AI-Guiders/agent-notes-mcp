@@ -105,7 +105,7 @@ internal static class ToolCatalog
         new()
         {
             Name = "upsert_agent_notes_section",
-            Description = "Точечно вставить/обновить секцию заметок по section_id без полной перезаписи файла. Секция оформляется маркерами <!-- section:ID --> ... <!-- /section:ID -->. Путь hot-файла — как у read_agent_notes.",
+            Description = "Точечно вставить/обновить секцию заметок по section_id без полной перезаписи файла. Секция оформляется маркерами <!-- section:ID --> ... <!-- /section:ID -->. При дублях/unclosed/orphan close — REJECTED (без silent append). Путь hot-файла — как у read_agent_notes.",
             InputSchema = Schema(new
             {
                 type = "object",
@@ -251,7 +251,7 @@ internal static class ToolCatalog
         new()
         {
             Name = "upsert_knowledge_section",
-            Description = "Вставить или обновить секцию в файле knowledge/ по section_id (маркеры <!-- section:ID --> ... <!-- /section:ID -->). Перед изменением текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true).",
+            Description = "Вставить или обновить секцию в файле knowledge/ по section_id (маркеры <!-- section:ID --> ... <!-- /section:ID -->). Дубли/битая разметка → REJECTED. Перед изменением текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true).",
             InputSchema = Schema(new
             {
                 type = "object",

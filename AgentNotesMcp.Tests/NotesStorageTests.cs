@@ -49,6 +49,52 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
+    public void UpsertSection_RejectsDuplicateBlocks_DoesNotBloat()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+
+        var broken =
+            """
+            <!-- section:current-task -->
+            first
+            <!-- /section:current-task -->
+
+            <!-- section:current-task -->
+            second
+            <!-- /section:current-task -->
+            """;
+        Assert.Equal("OK", storage.Write(temp.WorkspacePath, broken));
+        var before = storage.Read(temp.WorkspacePath);
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => storage.UpsertSection(temp.WorkspacePath, "current-task", "third"));
+        Assert.Contains("REJECTED", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("duplicate", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(before, storage.Read(temp.WorkspacePath));
+    }
+
+    [Fact]
+    public void UpsertSection_RejectsUnclosedSection_DoesNotAppend()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+
+        Assert.Equal("OK", storage.Write(temp.WorkspacePath,
+            "<!-- section:current-task -->\norphan open\n"));
+        var before = storage.Read(temp.WorkspacePath);
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => storage.UpsertSection(temp.WorkspacePath, "current-task", "fixed"));
+        Assert.Contains("REJECTED", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("unclosed", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(before, storage.Read(temp.WorkspacePath));
+        Assert.Equal(1, Count(before, "<!-- section:current-task -->"));
+    }
+
+    [Fact]
     public void DeleteSection_RemovesBlock_ReturnsNoChangesWhenMissing()
     {
         using var temp = TempWorkspace.Create();
@@ -183,6 +229,29 @@ public sealed class NotesStorageTests
         Assert.DoesNotContain("load playbook-music-v1\n", afterUpdate);
         Assert.Contains("load playbook-music-v1 and kb-*", afterUpdate);
         Assert.Equal(1, Count(afterUpdate, "<!-- section:music-router -->"));
+    }
+
+    [Fact]
+    public void Knowledge_UpsertSection_RejectsDuplicate_DoesNotBloat()
+    {
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
+        var storage = new NotesStorage();
+        storage.WriteKnowledgeFile(root.Path, "dup.md",
+            """
+            <!-- section:a -->
+            one
+            <!-- /section:a -->
+
+            <!-- section:a -->
+            two
+            <!-- /section:a -->
+            """);
+        var before = storage.ReadKnowledgeFile(root.Path, "dup.md");
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => storage.UpsertKnowledgeSection(root.Path, "dup.md", "a", "three"));
+        Assert.Contains("REJECTED", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(before, storage.ReadKnowledgeFile(root.Path, "dup.md"));
     }
 
     [Fact]
