@@ -18,6 +18,7 @@ internal sealed class ToolHandlers
             "delete_agent_notes_section" or
             "rollback_agent_notes" or
             "compact_hot_context" or
+            "normalize_sections" or
             "write_knowledge_file" or
             "append_knowledge_file" or
             "upsert_knowledge_section" or
@@ -40,6 +41,8 @@ internal sealed class ToolHandlers
             "search_agent_notes" => Search(args),
             "extract_from_archive" => ExtractFromArchive(args),
             "compact_hot_context" => CompactHotContext(args),
+            "validate_sections" => ValidateSections(args),
+            "normalize_sections" => NormalizeSections(args),
             "write_knowledge_file" => WriteKnowledgeFile(args),
             "append_knowledge_file" => AppendKnowledgeFile(args),
             "upsert_knowledge_section" => UpsertKnowledgeSection(args),
@@ -154,6 +157,36 @@ internal sealed class ToolHandlers
         var workspacePath = ToolArgs.RequiredString(args, "workspace_path");
         var apply = ToolArgs.GetBoolOrDefault(args, "apply", false);
         return _storage.CompactHotContext(workspacePath, apply);
+    }
+
+    private string ValidateSections(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var filePath = ToolArgs.OptionalString(args, "file_path");
+        if (!string.IsNullOrWhiteSpace(filePath))
+        {
+            var knowledgePath = ToolArgs.OptionalString(args, "knowledge_path");
+            var knowledgeRootId = ToolArgs.OptionalString(args, "knowledge_root_id");
+            return _storage.ValidateKnowledgeSections(knowledgePath, filePath, knowledgeRootId);
+        }
+
+        var workspacePath = ToolArgs.RequiredString(args, "workspace_path");
+        return _storage.ValidateSections(workspacePath);
+    }
+
+    private string NormalizeSections(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var apply = ToolArgs.GetBoolOrDefault(args, "apply", false);
+        var filePath = ToolArgs.OptionalString(args, "file_path");
+        if (!string.IsNullOrWhiteSpace(filePath))
+        {
+            var knowledgePath = ToolArgs.OptionalString(args, "knowledge_path");
+            var knowledgeRootId = ToolArgs.OptionalString(args, "knowledge_root_id");
+            var saveRevision = ToolArgs.GetBoolOrDefault(args, "save_revision", true);
+            return _storage.NormalizeKnowledgeSections(knowledgePath, filePath, apply, saveRevision, knowledgeRootId);
+        }
+
+        var workspacePath = ToolArgs.RequiredString(args, "workspace_path");
+        return _storage.NormalizeSections(workspacePath, apply);
     }
 
     private string WriteKnowledgeFile(IReadOnlyDictionary<string, JsonElement> args)

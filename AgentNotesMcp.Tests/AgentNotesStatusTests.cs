@@ -30,7 +30,7 @@ public sealed class AgentNotesStatusTests
         var html = AgentNotesStatusHtmlRenderer.Render(snapshot, workspaceQuery: null);
 
         Assert.Contains("agent-notes-mcp", html, StringComparison.Ordinal);
-        Assert.Contains("2.1.3", html, StringComparison.Ordinal);
+        Assert.Contains("2.1.4", html, StringComparison.Ordinal);
         Assert.Contains("memory_health", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("tools-strip", html, StringComparison.Ordinal);
         Assert.Contains("href=\"/tools\"", html, StringComparison.Ordinal);
@@ -126,7 +126,7 @@ public sealed class AgentNotesStatusTests
 
             var json = await client.GetStringAsync($"{url}/status.json?verbose=1");
             using var doc = JsonDocument.Parse(json);
-            Assert.Equal("2.1.3", doc.RootElement.GetProperty("mcp_version").GetString());
+            Assert.Equal("2.1.4", doc.RootElement.GetProperty("mcp_version").GetString());
             Assert.True(doc.RootElement.GetProperty("knowledge").GetProperty("primary_root").GetString()?.Contains("AgentNotesStatusTests", StringComparison.Ordinal) == true
                 || doc.RootElement.GetProperty("knowledge").GetProperty("primary_root").GetString()?.Length > 0);
         }

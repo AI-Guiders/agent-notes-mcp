@@ -95,6 +95,71 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
+    public void ValidateSections_ReportsDuplicates()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+        Assert.Equal("OK", storage.Write(temp.WorkspacePath,
+            """
+            <!-- section:a -->
+            one
+            <!-- /section:a -->
+
+            <!-- section:a -->
+            two
+            <!-- /section:a -->
+            """));
+
+        using var doc = JsonDocument.Parse(storage.ValidateSections(temp.WorkspacePath));
+        Assert.False(doc.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Contains("a", doc.RootElement.GetProperty("section_ids").EnumerateArray().Select(x => x.GetString()));
+        Assert.True(doc.RootElement.GetProperty("duplicates").GetArrayLength() >= 1);
+    }
+
+    [Fact]
+    public void NormalizeSections_CollapsesDuplicates_ApplyWrites()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+        Assert.Equal("OK", storage.Write(temp.WorkspacePath,
+            """
+            preamble
+
+            <!-- section:a -->
+            one
+            <!-- /section:a -->
+
+            <!-- section:a -->
+            two
+            <!-- /section:a -->
+
+            <!-- section:current-task -->
+            open only
+            """));
+
+        var preview = storage.NormalizeSections(temp.WorkspacePath, apply: false);
+        using (var doc = JsonDocument.Parse(preview))
+        {
+            Assert.True(doc.RootElement.GetProperty("changed").GetBoolean());
+            Assert.True(doc.RootElement.GetProperty("after").GetProperty("ok").GetBoolean());
+        }
+
+        Assert.Equal("OK", storage.NormalizeSections(temp.WorkspacePath, apply: true));
+        var after = storage.Read(temp.WorkspacePath);
+        Assert.Equal(1, Count(after, "<!-- section:a -->"));
+        Assert.Contains("two", after);
+        Assert.DoesNotContain("one", after);
+        Assert.Contains("preamble", after);
+        // Unclosed body may remain as plain text (do not delete agent content).
+        Assert.DoesNotContain("<!-- section:current-task -->", after);
+        using var afterDoc = JsonDocument.Parse(storage.ValidateSections(temp.WorkspacePath));
+        Assert.True(afterDoc.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "a", "three"));
+    }
+
+    [Fact]
     public void DeleteSection_RemovesBlock_ReturnsNoChangesWhenMissing()
     {
         using var temp = TempWorkspace.Create();

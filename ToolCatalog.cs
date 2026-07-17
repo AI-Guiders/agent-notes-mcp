@@ -214,6 +214,40 @@ internal static class ToolCatalog
         },
         new()
         {
+            Name = "validate_sections",
+            Description = "Проверить <!-- section:id --> разметку: ids, дубли, unclosed/orphan. Hot: workspace_path. Knowledge: file_path (+ knowledge_path|knowledge_root_id).",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    workspace_path = new { type = "string", description = "Hot agent-notes (если нет file_path)." },
+                    knowledge_path = new { type = "string", description = "Корень knowledge (опционально)." },
+                    knowledge_root_id = new { type = "string", description = "id корня из --config (опционально)." },
+                    file_path = new { type = "string", description = "Относительный путь в knowledge/." }
+                }
+            })
+        },
+        new()
+        {
+            Name = "normalize_sections",
+            Description = "Починить разметку секций: дубли → keep last, убрать orphan/unclosed маркеры, канон блоков. По умолчанию preview; apply=true пишет. Hot: workspace_path. Knowledge: file_path.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    workspace_path = new { type = "string", description = "Hot agent-notes (если нет file_path)." },
+                    knowledge_path = new { type = "string", description = "Корень knowledge (опционально)." },
+                    knowledge_root_id = new { type = "string", description = "id корня из --config (опционально)." },
+                    file_path = new { type = "string", description = "Относительный путь в knowledge/." },
+                    apply = new { type = "boolean", description = "true — записать, false — превью JSON." },
+                    save_revision = new { type = "boolean", description = "Для knowledge: revision перед записью (по умолчанию true)." }
+                }
+            })
+        },
+        new()
+        {
             Name = "write_knowledge_file",
             Description = "Записать файл в каталог knowledge/ (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Запись только в primary; read-only roots (knowledge_root_id=group) отклоняются.",
             InputSchema = Schema(new

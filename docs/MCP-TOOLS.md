@@ -60,6 +60,14 @@
 
 Ужать hot-context: удалить дубли секций, нормализовать формат. По умолчанию preview, apply=true для записи.
 
+### `validate_sections`
+
+Проверить <!-- section:id --> разметку: ids, дубли, unclosed/orphan. Hot: workspace_path. Knowledge: file_path (+ knowledge_path|knowledge_root_id).
+
+### `normalize_sections`
+
+Починить разметку секций: дубли → keep last, убрать orphan/unclosed маркеры, канон блоков. По умолчанию preview; apply=true пишет. Hot: workspace_path. Knowledge: file_path.
+
 ### `write_knowledge_file`
 
 Записать файл в каталог knowledge/ (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Запись только в primary; read-only roots (knowledge_root_id=group) отклоняются.
