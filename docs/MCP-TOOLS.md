@@ -90,11 +90,15 @@
 
 ### `read_knowledge_file`
 
-Прочитать файл из каталога knowledge/. Корень: knowledge_path, knowledge_root_id (group, …) или primary из --config. Возвращает содержимое или пустую строку. Опционально offset (1-based) и limit. Для протоколов: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md (route_context их не подставляет автоматически).
+Прочитать файл из knowledge/. mode=full (по умолчанию): текст или offset/limit. mode=outline: JSON TOC (section_ids + preview; preferred meta|summary) без полного дампа. Корень: knowledge_path / knowledge_root_id / primary. Длинные playbook — сначала outline, потом точечный full.
 
 ### `list_knowledge_files`
 
 Список файлов в каталоге knowledge/ (без .revisions). Опционально subdir — подкаталог (например work). Возвращает path, size_bytes, modified_utc.
+
+### `knowledge_tags`
+
+Индекс тематических хэштегов knowledge/**/*.md (строка **Tags:**). Без tag — inventory (tag→file_count). С tag (#adcm или adcm) — hits, #ssot первыми. Без scratch/.revisions. Playbook: playbook-kb-topic-hashtags-v1.
 
 <!-- GENERATED:ToolCatalog END -->
 

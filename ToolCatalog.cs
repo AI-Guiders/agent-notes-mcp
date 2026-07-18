@@ -337,7 +337,7 @@ internal static class ToolCatalog
         new()
         {
             Name = "read_knowledge_file",
-            Description = "Прочитать файл из каталога knowledge/. Корень: knowledge_path, knowledge_root_id (group, …) или primary из --config. Возвращает содержимое или пустую строку. Опционально offset (1-based) и limit. Для протоколов: playbook-multi-project-context-v1.md, index-knowledge-router-v1.md (route_context их не подставляет автоматически).",
+            Description = "Прочитать файл из knowledge/. mode=full (по умолчанию): текст или offset/limit. mode=outline: JSON TOC (section_ids + preview; preferred meta|summary) без полного дампа. Корень: knowledge_path / knowledge_root_id / primary. Длинные playbook — сначала outline, потом точечный full.",
             InputSchema = Schema(new
             {
                 type = "object",
@@ -346,8 +346,10 @@ internal static class ToolCatalog
                     knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: primary из --config. Не задавать вместе с knowledge_root_id." },
                     knowledge_root_id = new { type = "string", description = "Опционально. id из [knowledge.roots] или [[knowledge.read_only]] (напр. group). Чтение — любой корень; запись — только primary (user)." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например kb-music-theory-fundamentals-v1.md." },
-                    offset = new { type = "integer", description = "Опционально. Номер первой возвращаемой строки, нумерация с 1. Без offset и limit — весь файл." },
-                    limit = new { type = "integer", description = "Опционально. Максимум строк в ответе (после offset). 0 = пусто. Без limit — до конца файла." }
+                    mode = new { type = "string", description = "Опционально. full (default) | outline. outline игнорирует offset/limit." },
+                    preview_lines = new { type = "integer", description = "Только mode=outline: строк превью на секцию (1–40, default 5)." },
+                    offset = new { type = "integer", description = "Опционально (mode=full). Номер первой возвращаемой строки, нумерация с 1. Без offset и limit — весь файл." },
+                    limit = new { type = "integer", description = "Опционально (mode=full). Максимум строк в ответе (после offset). 0 = пусто. Без limit — до конца файла." }
                 },
                 required = new[] { "file_path" }
             })
@@ -364,6 +366,24 @@ internal static class ToolCatalog
                     knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: primary из --config. Не задавать вместе с knowledge_root_id." },
                     knowledge_root_id = new { type = "string", description = "Опционально. id из [knowledge.roots] или [[knowledge.read_only]] (напр. group). Чтение — любой корень; запись — только primary (user)." },
                     subdir = new { type = "string", description = "Подкаталог внутри knowledge/ (пусто = весь knowledge/). Например work." }
+                },
+                required = Array.Empty<string>()
+            })
+        },
+        new()
+        {
+            Name = "knowledge_tags",
+            Description = "Индекс тематических хэштегов knowledge/**/*.md (строка **Tags:**). Без tag — inventory (tag→file_count). С tag (#adcm или adcm) — hits, #ssot первыми. Без scratch/.revisions. Playbook: playbook-kb-topic-hashtags-v1.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: primary из --config. Не задавать вместе с knowledge_root_id." },
+                    knowledge_root_id = new { type = "string", description = "Опционально. id из [knowledge.roots] или [[knowledge.read_only]] (напр. group)." },
+                    subdir = new { type = "string", description = "Подкаталог внутри knowledge/ (пусто = весь knowledge/)." },
+                    tag = new { type = "string", description = "Опционально. Тема/роль: adcm или #adcm. Пусто — inventory топ тегов." },
+                    limit = new { type = "integer", description = "Макс. тегов (inventory) или hits (lookup). 1–500, default 50." }
                 },
                 required = Array.Empty<string>()
             })

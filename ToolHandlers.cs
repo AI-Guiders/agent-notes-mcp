@@ -50,6 +50,7 @@ internal sealed class ToolHandlers
             "delete_knowledge_file" => DeleteKnowledgeFile(args),
             "read_knowledge_file" => ReadKnowledgeFile(args),
             "list_knowledge_files" => ListKnowledgeFiles(args),
+            "knowledge_tags" => KnowledgeTags(args),
             _ => throw new ArgumentException($"Unknown tool: {toolName}.")
         };
 
@@ -246,6 +247,13 @@ internal sealed class ToolHandlers
         var knowledgePath = ToolArgs.OptionalKnowledgePath(args);
         var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
         var filePath = ToolArgs.RequiredString(args, "file_path");
+        var mode = ToolArgs.OptionalString(args, "mode");
+        if (string.Equals(mode, "outline", StringComparison.OrdinalIgnoreCase))
+        {
+            var previewLines = ToolArgs.OptionalClampedInt(args, "preview_lines", 1, 40) ?? 5;
+            return _storage.OutlineKnowledgeFile(knowledgePath, filePath, previewLines, knowledgeRootId);
+        }
+
         // offset: first line to return, 1-based (like an editor). limit: max lines; 0 = empty; absent = to EOF.
         var offsetLine = ToolArgs.OptionalClampedInt(args, "offset", 1, 10_000_000);
         var limitLines = ToolArgs.OptionalClampedInt(args, "limit", 0, 10_000_000);
@@ -262,5 +270,15 @@ internal sealed class ToolHandlers
         var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
         var subdir = ToolArgs.OptionalString(args, "subdir");
         return _storage.ListKnowledgeFiles(knowledgePath, subdir, knowledgeRootId);
+    }
+
+    private string KnowledgeTags(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var knowledgePath = ToolArgs.OptionalKnowledgePath(args);
+        var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
+        var subdir = ToolArgs.OptionalString(args, "subdir");
+        var tag = ToolArgs.OptionalString(args, "tag");
+        var limit = ToolArgs.GetIntOrDefault(args, "limit", 50, 1, 500);
+        return _storage.QueryKnowledgeTags(knowledgePath, tag, subdir, knowledgeRootId, limit);
     }
 }

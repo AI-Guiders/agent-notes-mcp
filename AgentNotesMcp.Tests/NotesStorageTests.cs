@@ -266,6 +266,26 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
+    public void Knowledge_Outline_ReturnsSectionTocWithoutFullDump()
+    {
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
+        var storage = new NotesStorage();
+        storage.WriteKnowledgeFile(root.Path, "long.md",
+            "# Title\n\n<!-- section:meta -->\n- id: demo\n<!-- /section:meta -->\n\n<!-- section:body -->\nline1\nline2\nline3\nline4\nline5\nline6\n<!-- /section:body -->\n",
+            saveRevision: false);
+
+        var json = storage.OutlineKnowledgeFile(root.Path, "long.md", previewLines: 2);
+        Assert.Contains("\"mode\": \"outline\"", json);
+        Assert.Contains("\"ok\": true", json);
+        Assert.Contains("meta", json);
+        Assert.Contains("body", json);
+        Assert.DoesNotContain("line6", json);
+        Assert.Contains("line1", json);
+        Assert.Contains("\"id\": \"meta\"", json);
+    }
+
+    [Fact]
     public void Knowledge_Append_DoesNotOverwrite()
     {
         using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
@@ -768,6 +788,43 @@ ok
             .Select(static item => item.GetProperty("file").GetString() ?? "")
             .Where(static value => value.Length > 0)
             .ToArray();
+    }
+
+    [Fact]
+    public void QueryKnowledgeTags_LookupPrefersSsot_SkipsScratch()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+        var canon = temp.RootPath;
+        var ops = Path.Combine(canon, "knowledge", "domains", "agent-operations");
+        Directory.CreateDirectory(ops);
+        File.WriteAllText(Path.Combine(ops, "playbook-a.md"), "# A\n\n**Tags:** #adcm #ssot #playbook\n", Encoding.UTF8);
+        File.WriteAllText(Path.Combine(ops, "note-b.md"), "# B\n\n**Tags:** #adcm #research #note\n", Encoding.UTF8);
+        var scratch = Path.Combine(canon, "knowledge", "work", "projects", "x", "scratch");
+        Directory.CreateDirectory(scratch);
+        File.WriteAllText(Path.Combine(scratch, "c.md"), "**Tags:** #adcm\n", Encoding.UTF8);
+
+        var json = storage.QueryKnowledgeTags(canon, "adcm");
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal(2, doc.RootElement.GetProperty("total").GetInt32());
+        var hits = doc.RootElement.GetProperty("hits").EnumerateArray().ToArray();
+        Assert.True(hits[0].GetProperty("ssot").GetBoolean());
+        Assert.Contains("playbook-a.md", hits[0].GetProperty("path").GetString(), StringComparison.Ordinal);
+
+        var inv = storage.QueryKnowledgeTags(canon, tag: null, limit: 20);
+        using var invDoc = JsonDocument.Parse(inv);
+        Assert.True(invDoc.RootElement.GetProperty("tagged_files").GetInt32() >= 2);
+        Assert.True(invDoc.RootElement.GetProperty("total_tags").GetInt32() >= 1);
+    }
+
+    [Fact]
+    public void KnowledgeTags_ParseTagsLine_Normalizes()
+    {
+        var tags = KnowledgeTags.ParseTagsLine("# Title\n\n**Tags:** #ADCM #ssot #playbook\n\nbody");
+        Assert.Equal(["adcm", "playbook", "ssot"], tags);
+        Assert.Equal(["adcm"], KnowledgeTags.TopicTags(tags));
+        Assert.Contains("ssot", KnowledgeTags.RoleTagsOf(tags));
     }
 
     private sealed class TempWorkspace : IDisposable
