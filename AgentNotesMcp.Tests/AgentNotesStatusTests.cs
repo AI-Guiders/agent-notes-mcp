@@ -40,7 +40,9 @@ public sealed class AgentNotesStatusTests
     [Fact]
     public void Tools_page_renders_catalog_table()
     {
-        var tools = ToolCatalog.ListSummaries();
+        var tools = ToolCatalog.ListSummaries()
+            .Select(t => new AgentNotesStatusSnapshot.ToolSummary(t.Name, t.Description))
+            .ToArray();
         var html = AgentNotesStatusHtmlRenderer.RenderToolsPage(tools);
 
         Assert.Contains("tools-catalog", html, StringComparison.Ordinal);

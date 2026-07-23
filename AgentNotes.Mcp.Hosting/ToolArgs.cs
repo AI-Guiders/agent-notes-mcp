@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-internal static class ToolArgs
+public static class ToolArgs
 {
     internal static string RequiredString(IReadOnlyDictionary<string, JsonElement> args, string key)
     {
@@ -19,6 +19,25 @@ internal static class ToolArgs
             return null;
         var str = value.GetString();
         return string.IsNullOrWhiteSpace(str) ? null : str.Trim();
+    }
+
+    /// <summary>Optional string array (JSON array of strings). Missing/empty → null.</summary>
+    internal static IReadOnlyList<string>? OptionalStringArray(
+        IReadOnlyDictionary<string, JsonElement> args, string key)
+    {
+        if (!args.TryGetValue(key, out var value) || value.ValueKind != JsonValueKind.Array)
+            return null;
+        var list = new List<string>();
+        foreach (var el in value.EnumerateArray())
+        {
+            if (el.ValueKind != JsonValueKind.String)
+                continue;
+            var s = el.GetString();
+            if (!string.IsNullOrWhiteSpace(s))
+                list.Add(s.Trim());
+        }
+
+        return list.Count == 0 ? null : list;
     }
 
     internal static string? OptionalKnowledgePath(IReadOnlyDictionary<string, JsonElement> args) =>

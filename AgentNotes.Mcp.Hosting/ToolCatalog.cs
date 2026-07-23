@@ -1,14 +1,13 @@
 using System.Text.Json;
-using AgentNotesMcp.Status;
 using ModelContextProtocol.Protocol;
 using Tool = ModelContextProtocol.Protocol.Tool;
 
-/// <summary>Каталог MCP-тулов. Согласован с <c>mcp-tools.manifest.json</c> и <c>docs/MCP-TOOLS.md</c> (генерация: <c>tools/ExportMcpManifest</c>, тесты <c>McpToolManifestTests</c>, <c>McpToolsDocTests</c>).</summary>
-internal static class ToolCatalog
+/// <summary>Каталог MCP-тулов.</summary>
+public static class ToolCatalog
 {
     private static JsonElement Schema(object schema) => JsonSerializer.SerializeToElement(schema);
 
-    internal static List<Tool> Build() =>
+    public static List<Tool> Build() =>
     [
         new()
         {
@@ -373,7 +372,7 @@ internal static class ToolCatalog
         new()
         {
             Name = "knowledge_tags",
-            Description = "Индекс тематических хэштегов knowledge/**/*.md (строка **Tags:**). Без tag — inventory (tag→file_count). С tag (#adcm или adcm) — hits, #ssot первыми. Без scratch/.revisions. Playbook: playbook-kb-topic-hashtags-v1.",
+            Description = "Canon-map MLP: индекс **Tags:** в knowledge/**/*.md. mode=inventory|lookup|explain|resolve|aliases (auto: без query→inventory, с→lookup). tag/query — #adcm или фраза («ничего о нас без нас»→#equal-standing). #ssot первыми; explain даёт preview+related. Cache+mtime. Playbook: playbook-kb-topic-hashtags-v1.",
             InputSchema = Schema(new
             {
                 type = "object",
@@ -382,16 +381,112 @@ internal static class ToolCatalog
                     knowledge_path = new { type = "string", description = "Корень репозитория knowledge (каталог с подпапкой knowledge/). Опционально: primary из --config. Не задавать вместе с knowledge_root_id." },
                     knowledge_root_id = new { type = "string", description = "Опционально. id из [knowledge.roots] или [[knowledge.read_only]] (напр. group)." },
                     subdir = new { type = "string", description = "Подкаталог внутри knowledge/ (пусто = весь knowledge/)." },
-                    tag = new { type = "string", description = "Опционально. Тема/роль: adcm или #adcm. Пусто — inventory топ тегов." },
-                    limit = new { type = "integer", description = "Макс. тегов (inventory) или hits (lookup). 1–500, default 50." }
+                    mode = new { type = "string", description = "inventory | lookup | explain | resolve | aliases | auto (default)." },
+                    tag = new { type = "string", description = "Тема/роль: adcm или #adcm. Синоним query для точного тега." },
+                    query = new { type = "string", description = "Тег или NL/alias-фраза (resolve/explain/lookup). Если задан — перекрывает tag." },
+                    ssot_only = new { type = "boolean", description = "Только hits с #ssot (lookup/explain)." },
+                    include_related = new { type = "boolean", description = "Co-occurrence related topics (default true)." },
+                    refresh = new { type = "boolean", description = "Принудительно пересобрать кэш индекса." },
+                    limit = new { type = "integer", description = "Макс. тегов/hits/aliases. 1–500, default 50." }
                 },
                 required = Array.Empty<string>()
+            })
+        },
+        new()
+        {
+            Name = "get_definition",
+            Description = "LLM-native pack: прочитать definition/misconception card (definitions/<id>.md). Возвращает fields + llm_cue + markdown. pack_id (напр. agent-operations-cdp) или pack_path; без pack — поиск по packs под allowed roots.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    definition_id = new { type = "string", description = "Id карточки, напр. debug-radius." },
+                    pack_id = new { type = "string", description = "Id из pack.toml (напр. agent-operations-cdp)." },
+                    pack_path = new { type = "string", description = "Относительный путь к каталогу pack/ внутри knowledge/." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge. Опционально: primary из --config." },
+                    knowledge_root_id = new { type = "string", description = "Опционально. id корня из --config." },
+                    allowed_roots = new { type = "array", items = new { type = "string" }, description = "Ограничение поиска (CDP facet injects)." }
+                },
+                required = new[] { "definition_id" }
+            })
+        },
+        new()
+        {
+            Name = "list_pack",
+            Description = "LLM-native pack: meta + definition_ids + process_ids + procedure_ids. Без pack_id — список packs в scope. CDP dogfood: pack_id=epistemic-scene.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    pack_id = new { type = "string", description = "Id из pack.toml." },
+                    pack_path = new { type = "string", description = "Относительный путь к pack/ внутри knowledge/." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge." },
+                    knowledge_root_id = new { type = "string", description = "Опционально. id корня из --config." },
+                    allowed_roots = new { type = "array", items = new { type = "string" }, description = "Ограничение поиска (CDP facet injects)." }
+                },
+                required = Array.Empty<string>()
+            })
+        },
+        new()
+        {
+            Name = "get_process",
+            Description = "LLM-native pack: Guided Graph process из processes.toml (steps/gate/definition_anchors). Default pack=epistemic-scene, process=bug-radius-shrink. Agent Env: policy suggested_next=ask (без CIDE enqueue).",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    process_id = new { type = "string", description = "Id процесса (default bug-radius-shrink)." },
+                    pack_id = new { type = "string", description = "Id pack (default epistemic-scene)." },
+                    pack_path = new { type = "string", description = "Относительный путь к pack/." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge." },
+                    knowledge_root_id = new { type = "string", description = "Опционально. id корня из --config." },
+                    allowed_roots = new { type = "array", items = new { type = "string" }, description = "Ограничение поиска (CDP facet injects)." }
+                },
+                required = Array.Empty<string>()
+            })
+        },
+        new()
+        {
+            Name = "get_procedure",
+            Description = "LLM-native pack: when-card procedure из procedures.toml (host-rule analogue; ADR-0003). Default pack=epistemic-scene, procedure=kolb-journal-park. Тоньше process: trigger + 3–7 steps.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    procedure_id = new { type = "string", description = "Id procedure (default kolb-journal-park)." },
+                    pack_id = new { type = "string", description = "Id pack (default epistemic-scene)." },
+                    pack_path = new { type = "string", description = "Относительный путь к pack/." },
+                    knowledge_path = new { type = "string", description = "Корень репозитория knowledge." },
+                    knowledge_root_id = new { type = "string", description = "Опционально. id корня из --config." },
+                    allowed_roots = new { type = "array", items = new { type = "string" }, description = "Ограничение поиска (CDP facet injects)." }
+                },
+                required = Array.Empty<string>()
+            })
+        },
+        new()
+        {
+            Name = "radius_gate_check",
+            Description = "Agent-side effectiveness gate: шаг OK iff delta_radius < 0; Bug DoD iff open_hypothesis_count==0. policy continue|ask. Перед promote claim.",
+            InputSchema = Schema(new
+            {
+                type = "object",
+                properties = new
+                {
+                    delta_radius = new { type = "number", description = "Изменение debug-radius на шаге (отрицательное = shrink)." },
+                    open_hypothesis_count = new { type = "integer", description = "Опционально: размер remaining H после шага." },
+                    claim = new { type = "string", description = "Опционально: текст claim/гипотезы для аудита." }
+                },
+                required = new[] { "delta_radius" }
             })
         }
     ];
 
-    internal static IReadOnlyList<AgentNotesStatusSnapshot.ToolSummary> ListSummaries() =>
+    public static IReadOnlyList<(string Name, string Description)> ListSummaries() =>
         Build()
-            .Select(t => new AgentNotesStatusSnapshot.ToolSummary(t.Name, t.Description ?? ""))
+            .Select(t => (t.Name, t.Description ?? ""))
             .ToArray();
 }

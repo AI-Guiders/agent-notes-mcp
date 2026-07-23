@@ -61,7 +61,9 @@ internal sealed class AgentNotesStatusSnapshot
             BindWarning = bindWarning,
             Knowledge = KnowledgeBlock.FromSettings(settings, verbose),
             Workspace = WorkspaceBlock.FromSettings(settings, effectiveWorkspace, previewWorkspace, memory),
-            Tools = ToolCatalog.ListSummaries(),
+            Tools = ToolCatalog.ListSummaries()
+                .Select(t => new ToolSummary(t.Name, t.Description))
+                .ToArray(),
             MemoryHealth = memory,
             RecentToolCalls = AgentNotesToolCallRingBuffer.Snapshot()
                 .Select(e => RecentToolCall.From(e))

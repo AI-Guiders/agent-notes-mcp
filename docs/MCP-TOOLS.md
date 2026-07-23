@@ -98,7 +98,23 @@
 
 ### `knowledge_tags`
 
-Индекс тематических хэштегов knowledge/**/*.md (строка **Tags:**). Без tag — inventory (tag→file_count). С tag (#adcm или adcm) — hits, #ssot первыми. Без scratch/.revisions. Playbook: playbook-kb-topic-hashtags-v1.
+Canon-map MLP: индекс **Tags:** в knowledge/**/*.md. mode=inventory|lookup|explain|resolve|aliases (auto: без query→inventory, с→lookup). tag/query — #adcm или фраза («ничего о нас без нас»→#equal-standing). #ssot первыми; explain даёт preview+related. Cache+mtime. Playbook: playbook-kb-topic-hashtags-v1.
+
+### `get_definition`
+
+LLM-native pack: прочитать definition/misconception card (definitions/<id>.md). Возвращает fields + llm_cue + markdown. pack_id (напр. agent-operations-cdp) или pack_path; без pack — поиск по packs под allowed roots.
+
+### `list_pack`
+
+LLM-native pack: meta + definition_ids + process_ids. Без pack_id — список packs в scope. CDP dogfood: pack_id=agent-operations-cdp.
+
+### `get_process`
+
+LLM-native pack: Guided Graph process из processes.toml (steps/gate/definition_anchors). Default pack=agent-operations-cdp, process=bug-radius-shrink. Agent Env: policy suggested_next=ask (без CIDE enqueue).
+
+### `radius_gate_check`
+
+Agent-side effectiveness gate: шаг OK iff delta_radius < 0; Bug DoD iff open_hypothesis_count==0. policy continue|ask. Перед promote claim.
 
 <!-- GENERATED:ToolCatalog END -->
 

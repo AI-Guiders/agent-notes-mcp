@@ -103,7 +103,10 @@ internal sealed class AgentNotesStatusHost
 
         app.MapGet("/tools", () =>
         {
-            var html = AgentNotesStatusHtmlRenderer.RenderToolsPage(ToolCatalog.ListSummaries());
+            var html = AgentNotesStatusHtmlRenderer.RenderToolsPage(
+                ToolCatalog.ListSummaries()
+                    .Select(t => new AgentNotesStatusSnapshot.ToolSummary(t.Name, t.Description))
+                    .ToArray());
             return Results.Content(html, "text/html; charset=utf-8");
         });
 

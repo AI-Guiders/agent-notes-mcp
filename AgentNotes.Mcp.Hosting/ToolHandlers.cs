@@ -1,16 +1,16 @@
 using System.Text.Json;
 using AgentNotes.Core;
 
-internal sealed class ToolHandlers
+public sealed class ToolHandlers
 {
     private readonly NotesStorage _storage;
 
-    internal ToolHandlers(NotesStorage storage)
+    public ToolHandlers(NotesStorage storage)
     {
         _storage = storage;
     }
 
-    internal bool IsWriteLikeTool(string name) =>
+    public bool IsWriteLikeTool(string name) =>
         name is
             "write_agent_notes" or
             "append_agent_notes" or
@@ -25,7 +25,7 @@ internal sealed class ToolHandlers
             "delete_knowledge_section" or
             "delete_knowledge_file";
 
-    internal string Handle(string toolName, IReadOnlyDictionary<string, JsonElement> args) =>
+    public string Handle(string toolName, IReadOnlyDictionary<string, JsonElement> args) =>
         toolName switch
         {
             "memory_health" => MemoryHealth(args),
@@ -51,6 +51,11 @@ internal sealed class ToolHandlers
             "read_knowledge_file" => ReadKnowledgeFile(args),
             "list_knowledge_files" => ListKnowledgeFiles(args),
             "knowledge_tags" => KnowledgeTags(args),
+            "get_definition" => GetDefinition(args),
+            "list_pack" => ListPack(args),
+            "get_process" => GetProcess(args),
+            "get_procedure" => GetProcedure(args),
+            "radius_gate_check" => RadiusGateCheck(args),
             _ => throw new ArgumentException($"Unknown tool: {toolName}.")
         };
 
@@ -278,7 +283,81 @@ internal sealed class ToolHandlers
         var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
         var subdir = ToolArgs.OptionalString(args, "subdir");
         var tag = ToolArgs.OptionalString(args, "tag");
+        var query = ToolArgs.OptionalString(args, "query");
+        var mode = ToolArgs.OptionalString(args, "mode");
         var limit = ToolArgs.GetIntOrDefault(args, "limit", 50, 1, 500);
-        return _storage.QueryKnowledgeTags(knowledgePath, tag, subdir, knowledgeRootId, limit);
+        var ssotOnly = ToolArgs.GetBoolOrDefault(args, "ssot_only", false);
+        var includeRelated = ToolArgs.GetBoolOrDefault(args, "include_related", true);
+        var refresh = ToolArgs.GetBoolOrDefault(args, "refresh", false);
+        return _storage.QueryKnowledgeTags(
+            knowledgePath,
+            tag,
+            subdir,
+            knowledgeRootId,
+            limit,
+            mode,
+            query,
+            ssotOnly,
+            includeRelated,
+            refresh);
+    }
+
+    private string GetDefinition(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var knowledgePath = ToolArgs.OptionalKnowledgePath(args);
+        var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
+        var definitionId = ToolArgs.RequiredString(args, "definition_id");
+        var packId = ToolArgs.OptionalString(args, "pack_id");
+        var packPath = ToolArgs.OptionalString(args, "pack_path");
+        var allowedRoots = ToolArgs.OptionalStringArray(args, "allowed_roots");
+        return _storage.GetDefinition(
+            knowledgePath, definitionId, packId, packPath, knowledgeRootId, allowedRoots);
+    }
+
+    private string ListPack(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var knowledgePath = ToolArgs.OptionalKnowledgePath(args);
+        var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
+        var packId = ToolArgs.OptionalString(args, "pack_id");
+        var packPath = ToolArgs.OptionalString(args, "pack_path");
+        var allowedRoots = ToolArgs.OptionalStringArray(args, "allowed_roots");
+        return _storage.ListPack(knowledgePath, packId, packPath, knowledgeRootId, allowedRoots);
+    }
+
+    private string GetProcess(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var knowledgePath = ToolArgs.OptionalKnowledgePath(args);
+        var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
+        var processId = ToolArgs.OptionalString(args, "process_id");
+        var packId = ToolArgs.OptionalString(args, "pack_id");
+        var packPath = ToolArgs.OptionalString(args, "pack_path");
+        var allowedRoots = ToolArgs.OptionalStringArray(args, "allowed_roots");
+        return _storage.GetProcess(
+            knowledgePath, processId, packId, packPath, knowledgeRootId, allowedRoots);
+    }
+
+    private string GetProcedure(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        var knowledgePath = ToolArgs.OptionalKnowledgePath(args);
+        var knowledgeRootId = ToolArgs.OptionalKnowledgeRootId(args);
+        var procedureId = ToolArgs.OptionalString(args, "procedure_id");
+        var packId = ToolArgs.OptionalString(args, "pack_id");
+        var packPath = ToolArgs.OptionalString(args, "pack_path");
+        var allowedRoots = ToolArgs.OptionalStringArray(args, "allowed_roots");
+        return _storage.GetProcedure(
+            knowledgePath, procedureId, packId, packPath, knowledgeRootId, allowedRoots);
+    }
+
+    private string RadiusGateCheck(IReadOnlyDictionary<string, JsonElement> args)
+    {
+        double? delta = null;
+        if (args.TryGetValue("delta_radius", out var d) && d.ValueKind is JsonValueKind.Number)
+            delta = d.GetDouble();
+        int? openCount = null;
+        if (args.TryGetValue("open_hypothesis_count", out var o) && o.ValueKind is JsonValueKind.Number
+            && o.TryGetInt32(out var oi))
+            openCount = oi;
+        var claim = ToolArgs.OptionalString(args, "claim");
+        return _storage.RadiusGateCheck(delta, openCount, claim);
     }
 }

@@ -814,8 +814,73 @@ ok
 
         var inv = storage.QueryKnowledgeTags(canon, tag: null, limit: 20);
         using var invDoc = JsonDocument.Parse(inv);
+        Assert.Equal("inventory", invDoc.RootElement.GetProperty("mode").GetString());
         Assert.True(invDoc.RootElement.GetProperty("tagged_files").GetInt32() >= 2);
         Assert.True(invDoc.RootElement.GetProperty("total_tags").GetInt32() >= 1);
+    }
+
+    [Fact]
+    public void QueryKnowledgeTags_Mlp_ResolveAlias_Explain_CacheHit()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+        var canon = temp.RootPath;
+        var ops = Path.Combine(canon, "knowledge", "domains", "agent-operations");
+        Directory.CreateDirectory(ops);
+        File.WriteAllText(
+            Path.Combine(ops, "playbook-eq.md"),
+            "# Equal\n\n**Tags:** #equal-standing #ssot #playbook\n\nCite L0; do not rewrite.\n",
+            Encoding.UTF8);
+        File.WriteAllText(
+            Path.Combine(ops, "note-adcm.md"),
+            "# ADCM\n\n**Tags:** #adcm #equal-standing #research #note\n\nRelated topic note.\n",
+            Encoding.UTF8);
+
+        var resolve = storage.QueryKnowledgeTags(
+            canon,
+            mode: "resolve",
+            query: "ничего о нас без нас");
+        using (var doc = JsonDocument.Parse(resolve))
+        {
+            Assert.Equal("#equal-standing", doc.RootElement.GetProperty("resolved_tag").GetString());
+            Assert.Equal("alias", doc.RootElement.GetProperty("resolve_via").GetString());
+        }
+
+        var explain = storage.QueryKnowledgeTags(
+            canon,
+            mode: "explain",
+            query: "nothing about us without us",
+            includeRelated: true);
+        using (var doc = JsonDocument.Parse(explain))
+        {
+            Assert.Equal("explain", doc.RootElement.GetProperty("mode").GetString());
+            Assert.Equal("cite_ssot", doc.RootElement.GetProperty("policy").GetString());
+            Assert.Contains("playbook-eq.md", doc.RootElement.GetProperty("ssot").GetProperty("path").GetString(), StringComparison.Ordinal);
+            Assert.Contains("Cite L0", doc.RootElement.GetProperty("ssot").GetProperty("preview").GetString(), StringComparison.Ordinal);
+            Assert.True(doc.RootElement.GetProperty("related").GetArrayLength() >= 1);
+        }
+
+        var miss = storage.QueryKnowledgeTags(canon, tag: "equal-standing", refresh: true);
+        using (var doc = JsonDocument.Parse(miss))
+            Assert.Equal("refresh", doc.RootElement.GetProperty("cache").GetString());
+
+        var hit = storage.QueryKnowledgeTags(canon, tag: "equal-standing");
+        using (var doc = JsonDocument.Parse(hit))
+        {
+            Assert.Equal("hit", doc.RootElement.GetProperty("cache").GetString());
+            Assert.Equal("lookup", doc.RootElement.GetProperty("mode").GetString());
+            Assert.True(doc.RootElement.GetProperty("hits")[0].GetProperty("ssot").GetBoolean());
+        }
+
+        storage.WriteKnowledgeFile(canon, "domains/agent-operations/playbook-eq.md",
+            "# Equal\n\n**Tags:** #equal-standing #ssot #playbook\n\nUpdated preview.\n");
+        var afterWrite = storage.QueryKnowledgeTags(canon, mode: "explain", tag: "equal-standing");
+        using (var doc = JsonDocument.Parse(afterWrite))
+        {
+            Assert.Equal("miss", doc.RootElement.GetProperty("cache").GetString());
+            Assert.Contains("Updated preview", doc.RootElement.GetProperty("ssot").GetProperty("preview").GetString(), StringComparison.Ordinal);
+        }
     }
 
     [Fact]
