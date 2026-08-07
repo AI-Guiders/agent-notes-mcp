@@ -202,7 +202,8 @@ public sealed class ToolHandlers
         var filePath = ToolArgs.RequiredString(args, "file_path");
         var content = ToolArgs.RequiredString(args, "content");
         var saveRevision = ToolArgs.GetBoolOrDefault(args, "save_revision", true);
-        return _storage.WriteKnowledgeFile(knowledgePath, filePath, content, saveRevision, knowledgeRootId);
+        var allowShrink = ToolArgs.GetBoolOrDefault(args, "allow_shrink", false);
+        return _storage.WriteKnowledgeFile(knowledgePath, filePath, content, saveRevision, knowledgeRootId, allowShrink);
     }
 
     private string AppendKnowledgeFile(IReadOnlyDictionary<string, JsonElement> args)
