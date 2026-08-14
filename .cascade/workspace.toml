@@ -1,0 +1,14 @@
+[workspace.adr]
+auto_include = "linked"
+max_related = 8
+root_dir = "docs/adr"
+id_regex = '(?:^|/)docs/adr/(?<id>\d{3})-'
+
+[workspace.adr.map]
+"*" = [
+  "docs/adr/015-multi-root-read-only-knowledge-routing-v1.md",
+  "docs/adr/014-agent-notes-local-settings-toml-v1.md",
+  "docs/adr/008-workspace-scope-map-resolution.md",
+  "README.md",
+]
+
