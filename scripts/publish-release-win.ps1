@@ -15,7 +15,7 @@ param(
     [string] $Tag = "v$Version",
     [string] $GitLabUrl,
     [string] $Token,
-    [string] $ProjectPath = "Krawler/agent-notes-mcp",
+    [string] $ProjectPath = "AI-Guiders/agent-notes-mcp",
     [string[]] $Rids = @("win-x64", "linux-x64", "osx-x64"),
     [string] $ReleaseDescription = "",
     [switch] $CreateRelease
