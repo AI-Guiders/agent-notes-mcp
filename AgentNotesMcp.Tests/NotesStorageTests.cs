@@ -240,6 +240,31 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
+    public void Knowledge_Write_ShrinkWithoutAllow_Throws()
+    {
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
+        var storage = new NotesStorage();
+        Assert.Equal("OK", storage.WriteKnowledgeFile(root.Path, "shrink.md", "long-body-content-here"));
+
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            storage.WriteKnowledgeFile(root.Path, "shrink.md", "short"));
+        Assert.Contains("allow_shrink=true", ex.Message, StringComparison.Ordinal);
+        Assert.Equal("long-body-content-here", storage.ReadKnowledgeFile(root.Path, "shrink.md"));
+    }
+
+    [Fact]
+    public void Knowledge_Write_ShrinkWithAllow_Ok()
+    {
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
+        var storage = new NotesStorage();
+        Assert.Equal("OK", storage.WriteKnowledgeFile(root.Path, "shrink.md", "long-body-content-here"));
+        Assert.Equal("OK", storage.WriteKnowledgeFile(root.Path, "shrink.md", "short", allowShrink: true));
+        Assert.Equal("short", storage.ReadKnowledgeFile(root.Path, "shrink.md"));
+    }
+
+    [Fact]
     public void Knowledge_Read_WhenFileMissing_ReturnsEmpty()
     {
         using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
@@ -874,7 +899,8 @@ ok
         }
 
         storage.WriteKnowledgeFile(canon, "domains/agent-operations/playbook-eq.md",
-            "# Equal\n\n**Tags:** #equal-standing #ssot #playbook\n\nUpdated preview.\n");
+            "# Equal\n\n**Tags:** #equal-standing #ssot #playbook\n\nUpdated preview.\n",
+            allowShrink: true);
         var afterWrite = storage.QueryKnowledgeTags(canon, mode: "explain", tag: "equal-standing");
         using (var doc = JsonDocument.Parse(afterWrite))
         {

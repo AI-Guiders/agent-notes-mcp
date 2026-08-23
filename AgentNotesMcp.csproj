@@ -16,12 +16,12 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="AIGuiders.AgentNotes.Core" Version="2.1.8" Condition="!Exists('..\agent-notes-core\AgentNotes.Core.csproj')" />
+    <PackageReference Include="AIGuiders.AgentNotes.Core" Version="2.1.8" Condition="!Exists('$(GuidersCoreRoot)\src\AgentNotes.Core\AgentNotes.Core.csproj')" />
     <PackageReference Include="ModelContextProtocol" Version="1.3.0" />
   </ItemGroup>
 
-  <ItemGroup Condition="Exists('..\agent-notes-core\AgentNotes.Core.csproj')">
-    <ProjectReference Include="..\agent-notes-core\AgentNotes.Core.csproj" />
+  <ItemGroup Condition="Exists('$(GuidersCoreRoot)\src\AgentNotes.Core\AgentNotes.Core.csproj')">
+    <ProjectReference Include="$(GuidersCoreRoot)\src\AgentNotes.Core\AgentNotes.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

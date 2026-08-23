@@ -248,7 +248,7 @@ public static class ToolCatalog
         new()
         {
             Name = "write_knowledge_file",
-            Description = "Записать файл в каталог knowledge/ (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Запись только в primary; read-only roots (knowledge_root_id=group) отклоняются.",
+            Description = "Записать файл в каталог knowledge/ (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Запись только в primary; read-only roots (knowledge_root_id=group) отклоняются. Shorter rewrite of an existing file requires allow_shrink=true (same policy as cdp_buffer set_text) — prefer append/upsert for surgical edits.",
             InputSchema = Schema(new
             {
                 type = "object",
@@ -258,7 +258,8 @@ public static class ToolCatalog
                     knowledge_root_id = new { type = "string", description = "Опционально. id из [knowledge.roots] или [[knowledge.read_only]] (напр. group). Чтение — любой корень; запись — только primary (user)." },
                     file_path = new { type = "string", description = "Относительный путь внутри knowledge/, например kb-music-acoustics-v1.md (без '..' и без абсолютного пути)." },
                     content = new { type = "string", description = "Полное содержимое файла." },
-                    save_revision = new { type = "boolean", description = "Сохранить текущую версию в knowledge/.revisions/ перед записью (по умолчанию true)." }
+                    save_revision = new { type = "boolean", description = "Сохранить текущую версию в knowledge/.revisions/ перед записью (по умолчанию true)." },
+                    allow_shrink = new { type = "boolean", description = "Required when new body is shorter than existing file (intentional full rewrite). Default false." }
                 },
                 required = new[] { "file_path", "content" }
             })

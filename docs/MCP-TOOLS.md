@@ -70,7 +70,7 @@
 
 ### `write_knowledge_file`
 
-Записать файл в каталог knowledge/ (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Запись только в primary; read-only roots (knowledge_root_id=group) отклоняются.
+Записать файл в каталог knowledge/ (полная замена). Перед записью текущая версия сохраняется в knowledge/.revisions/ (если save_revision=true). Запись только в primary; read-only roots (knowledge_root_id=group) отклоняются. Shorter rewrite of an existing file requires allow_shrink=true (same policy as cdp_buffer set_text) — prefer append/upsert for surgical edits.
 
 ### `append_knowledge_file`
 
@@ -106,11 +106,15 @@ LLM-native pack: прочитать definition/misconception card (definitions/<
 
 ### `list_pack`
 
-LLM-native pack: meta + definition_ids + process_ids. Без pack_id — список packs в scope. CDP dogfood: pack_id=agent-operations-cdp.
+LLM-native pack: meta + definition_ids + process_ids + procedure_ids. Без pack_id — список packs в scope. CDP dogfood: pack_id=epistemic-scene.
 
 ### `get_process`
 
-LLM-native pack: Guided Graph process из processes.toml (steps/gate/definition_anchors). Default pack=agent-operations-cdp, process=bug-radius-shrink. Agent Env: policy suggested_next=ask (без CIDE enqueue).
+LLM-native pack: Guided Graph process из processes.toml (steps/gate/definition_anchors). Default pack=epistemic-scene, process=bug-radius-shrink. Agent Env: policy suggested_next=ask (без CIDE enqueue).
+
+### `get_procedure`
+
+LLM-native pack: when-card procedure из procedures.toml (host-rule analogue; ADR-0003). Default pack=epistemic-scene, procedure=kolb-journal-park. Тоньше process: trigger + 3–7 steps.
 
 ### `radius_gate_check`
 
