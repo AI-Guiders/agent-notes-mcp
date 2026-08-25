@@ -33,9 +33,7 @@ dotnet publish AgentNotesMcp.csproj -c Release -o publish
 
 ## Лицензия
 
-Код и документация **этого репозитория** — **MIT** ([`LICENSE`](LICENSE), [hub](https://github.com/AI-Guiders/licensing)) · Ethical use: [policy](https://github.com/AI-Guiders/licensing/blob/main/docs/ethical-use.md). Тексты **KB** как контент — не MIT: публичный срез **[kb-public](https://github.com/KarataevDmitry/kb-public)** и [`knowledge/README.md` там](https://github.com/KarataevDmitry/kb-public/blob/main/knowledge/README.md). Сторонние пакеты — **[docs/THIRD-PARTY-NOTICES.md](docs/THIRD-PARTY-NOTICES.md)**.
-
-Общая логика хранения — библиотека **[AIGuiders.AgentNotes.Core](https://www.nuget.org/packages/AIGuiders.AgentNotes.Core)** 2.x ([исходники](https://github.com/AI-Guiders/AIGuiders.AgentNotes.Core)), MIT.
+Software: [MIT](LICENSE) ([канонический текст](https://github.com/AI-Guiders/licensing/blob/main/software/MIT.txt)) · Ethical use: [policy](https://github.com/AI-Guiders/licensing/blob/main/docs/ethical-use.md)
 
 ## Документация
 
