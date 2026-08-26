@@ -15,7 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\AgentNotesMcp.csproj" />
-    <ProjectReference Include="..\..\..\tools\McpToolManifest\McpToolManifest.csproj" />
+    <ProjectReference Include="..\..\..\mcp-tool-manifest\McpToolManifest.csproj" />
   </ItemGroup>
 
 </Project>
