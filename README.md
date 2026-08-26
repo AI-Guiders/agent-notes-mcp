@@ -33,7 +33,7 @@ dotnet publish AgentNotesMcp.csproj -c Release -o publish
 
 ## Лицензия
 
-Software: [MIT](LICENSE) ([канонический текст](https://github.com/AI-Guiders/licensing/blob/main/software/MIT.txt)) · Ethical use: [policy](https://github.com/AI-Guiders/licensing/blob/main/docs/ethical-use.md)
+Software: [MIT](LICENSE) ([текст OSI](https://opensource.org/license/MIT)) · Ethical use: [declaration](https://github.com/AI-Guiders/licensing/blob/main/docs/ethical-use.md)
 
 ## Документация
 
