@@ -1,6 +1,6 @@
 # ADR 008 (MCP): резолв `active_scope` и карта workspace → scope
 
-**Статус:** Accepted (зеркало KB)  
+**Status:** Accepted (зеркало KB)  
 **Дата:** 2026-05-12  
 
 **Канонический текст (KB):** `knowledge/adr/008-workspace-scope-map-hot-mcp-and-public-cut.md`.

@@ -1,6 +1,6 @@
 # ADR 013: Localhost status surface (AgentNotesStatus)
 
-**Статус:** Accepted · Implemented  
+**Status:** Accepted · Implemented  
 **Дата:** 2026-05-16  
 **Обновлено:** 2026-05-16 — фазы 1–2: HTTP loopback, HTML/JSON, ring buffer, `/hot-preview`, `--status-only`.
 

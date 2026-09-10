@@ -1,6 +1,6 @@
 # ADR 015: Multi-root read-only knowledge routing (`knowledge_root_id`)
 
-**Статус:** Accepted  
+**Status:** Accepted  
 **Дата:** 2026-05-18 (доп. 2026-05-18: реестр `work/local` + hot-указатель)  
 **Связано:** [014](014-agent-notes-local-settings-toml-v1.md) (TOML `[[knowledge.read_only]]`), KB [012-multi-canon-workspace-resolution-v1.md](https://github.com/KarataevDmitry/personal-knowledge-base/blob/main/knowledge/adr/012-multi-canon-workspace-resolution-v1.md), [011](https://github.com/KarataevDmitry/personal-knowledge-base/blob/main/knowledge/adr/011-aiguiders-org-collaborative-kb-repo-v1.md) (team KB → `AI-Guiders/kb`)
 

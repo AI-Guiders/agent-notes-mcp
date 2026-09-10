@@ -1,6 +1,6 @@
 # ADR 014 (MCP): Локальные настройки — TOML по `--config` (релиз **2.0**)
 
-**Статус:** Proposed  
+**Status:** Proposed  
 **Дата:** 2026-05-16  
 **Обновлено:** 2026-05-16 — breaking MCP **2.0**: обязательный `--config`, Tomlyn, без legacy env/META JSON.
 
