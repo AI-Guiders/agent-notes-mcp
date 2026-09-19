@@ -88,6 +88,35 @@ public sealed class LocalSettingsLoaderTests
         Assert.Equal(root.Path, resolved);
     }
 
+    [Fact]
+    public void ResolveForWrite_AcceptsBackslashPath_WhenTomlRootUsesForwardSlashes()
+    {
+        using var root = TempKnowledgeRoot.Create();
+        var slashRoot = root.Path.Replace('\\', '/');
+        var toml = $"""
+            version = 1
+
+            [knowledge]
+            primary = "test"
+
+            [knowledge.roots]
+            test = "{slashRoot}"
+            """;
+        var cfg = Path.Combine(Path.GetTempPath(), "AgentNotesMcpTests", $"cfg-slash-{Guid.NewGuid():N}.toml");
+        Directory.CreateDirectory(Path.GetDirectoryName(cfg)!);
+        File.WriteAllText(cfg, toml);
+        using var runtime = AgentNotesTestToml.Install(cfg);
+
+        // Tool-side normalization uses Windows separators; TOML kept forward slashes.
+        var winForm = Path.GetFullPath(root.Path);
+        Assert.DoesNotContain('/', winForm);
+        Assert.Contains('/', slashRoot);
+
+        Assert.True(KnowledgeRootResolution.PathsEqual(slashRoot, winForm));
+        var resolved = NotesStorage.ResolveKnowledgeRootForWrite(winForm);
+        Assert.Equal(winForm, resolved);
+    }
+
     private sealed class TestEnvVarScope : IDisposable
     {
         private readonly string _name;
