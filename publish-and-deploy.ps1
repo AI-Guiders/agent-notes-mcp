@@ -3,7 +3,8 @@
 # Optional: -Target "D:\agent-notes-mcp"
 [CmdletBinding()]
 param(
-    [string] $Target = "D:\agent-notes-mcp"
+    [string] $Target = "D:\agent-notes-mcp",
+    [switch] $KillRunning
 )
 
 $ErrorActionPreference = "Stop"
@@ -21,11 +22,12 @@ try {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     # Prefer local tool (repo-pinned), but global install works too.
+    $killArg = if ($KillRunning) { @("-KillRunning") } else { @() }
     if (Test-Path -LiteralPath (Join-Path $here ".config\\dotnet-tools.json")) {
         & dotnet tool restore | Out-Null
-        & dotnet aid-publish -Project $csproj -Target $Target -Runtime "win-x64" -Configuration "Release" -SelfContained -KillRunning
+        & dotnet aid-publish -Project $csproj -Target $Target -Runtime "win-x64" -Configuration "Release" -SelfContained @killArg
     } else {
-        & aid-publish -Project $csproj -Target $Target -Runtime "win-x64" -Configuration "Release" -SelfContained -KillRunning
+        & dotnet aid-publish -Project $csproj -Target $Target -Runtime "win-x64" -Configuration "Release" -SelfContained @killArg
     }
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
