@@ -789,6 +789,23 @@ ok
         Assert.Contains("dts scope", doc.RootElement.GetProperty("content").GetString() ?? "");
     }
 
+    [Fact]
+    public void ReadSingleSection_ReturnsOneBlock_NotFullFile()
+    {
+        using var temp = TempWorkspace.Create();
+        using var env = EnvVarScope.Set("AGENT_NOTES_FILE", temp.NotesFilePath);
+        var storage = new NotesStorage();
+        var bulk = new string('x', 50_000);
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "tiny", "hello"));
+        Assert.Equal("OK", storage.UpsertSection(temp.WorkspacePath, "heavy", bulk));
+
+        var json = storage.ReadSingleSection(temp.WorkspacePath, "tiny");
+        using var doc = JsonDocument.Parse(json);
+        Assert.True(doc.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Equal("hello", doc.RootElement.GetProperty("content").GetString());
+        Assert.DoesNotContain("xxxx", json);
+    }
+
     private static int Count(string value, string token)
     {
         var matches = 0;

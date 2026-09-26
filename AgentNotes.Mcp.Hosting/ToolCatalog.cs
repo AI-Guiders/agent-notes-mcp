@@ -75,13 +75,16 @@ public static class ToolCatalog
         new()
         {
             Name = "read_agent_notes",
-            Description = "Прочитать заметки агента. Путь hot-файла: primary knowledge root из --config → {корень}/agent-notes.md; иначе workspace_path/.cascade-ide/agent-notes.md. Возвращает содержимое или пустую строку.",
+            Description = "По умолчанию — тот же hot slice, что read_hot_context (L0 + scope), не весь agent-notes.md. full=true — весь файл (только diff/миграция). section_id — одна секция. Путь hot-файла: primary knowledge root из --config.",
             InputSchema = Schema(new
             {
                 type = "object",
                 properties = new
                 {
-                    workspace_path = new { type = "string", description = "Каталог workspace (тот же, что при записи)." }
+                    workspace_path = new { type = "string", description = "Каталог workspace (тот же, что при записи)." },
+                    active_scope = new { type = "string", description = "Опционально, как у read_hot_context." },
+                    section_id = new { type = "string", description = "Опционально: одна секция по id." },
+                    full = new { type = "boolean", description = "true — весь agent-notes.md (редко; риск переполнения контекста)." }
                 },
                 required = new[] { "workspace_path" }
             })

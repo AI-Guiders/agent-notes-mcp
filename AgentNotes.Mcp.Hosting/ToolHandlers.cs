@@ -93,7 +93,20 @@ public sealed class ToolHandlers
     private string Read(IReadOnlyDictionary<string, JsonElement> args)
     {
         var workspacePath = ToolArgs.RequiredString(args, "workspace_path");
-        return _storage.Read(workspacePath);
+        var full = ToolArgs.GetBoolOrDefault(args, "full", false);
+        if (full)
+            return _storage.Read(workspacePath);
+
+        var sectionId = ToolArgs.OptionalString(args, "section_id");
+        if (!string.IsNullOrWhiteSpace(sectionId))
+        {
+            if (!ToolArgs.IsValidSectionId(sectionId))
+                throw new ArgumentException("section_id must match ^[A-Za-z0-9._-]+$.");
+            return _storage.ReadSingleSection(workspacePath, sectionId);
+        }
+
+        var activeScope = ToolArgs.OptionalString(args, "active_scope");
+        return _storage.ReadHotContext(workspacePath, activeScope);
     }
 
     private string UpsertSection(IReadOnlyDictionary<string, JsonElement> args)

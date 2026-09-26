@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup>
+    <GuidersCoreRoot Condition="'$(GuidersCoreRoot)' == ''">$(MSBuildThisFileDirectory)..\guiders-core</GuidersCoreRoot>
+  </PropertyGroup>
+</Project>

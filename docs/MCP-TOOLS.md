@@ -26,7 +26,7 @@
 
 ### `read_agent_notes`
 
-Прочитать заметки агента. Путь hot-файла: primary knowledge root из --config → {корень}/agent-notes.md; иначе workspace_path/.cascade-ide/agent-notes.md. Возвращает содержимое или пустую строку.
+По умолчанию — тот же hot slice, что read_hot_context (L0 + scope), не весь agent-notes.md. full=true — весь файл (только diff/миграция). section_id — одна секция. Путь hot-файла: primary knowledge root из --config.
 
 ### `read_hot_context`
 
