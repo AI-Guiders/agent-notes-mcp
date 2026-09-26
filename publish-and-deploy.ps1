@@ -22,13 +22,10 @@ try {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     # Prefer local tool (repo-pinned), but global install works too.
-    $killArg = if ($KillRunning) { @("-KillRunning") } else { @() }
     if (Test-Path -LiteralPath (Join-Path $here ".config\\dotnet-tools.json")) {
         & dotnet tool restore | Out-Null
-        & dotnet aid-publish -Project $csproj -Target $Target -Runtime "win-x64" -Configuration "Release" -SelfContained @killArg
-    } else {
-        & dotnet aid-publish -Project $csproj -Target $Target -Runtime "win-x64" -Configuration "Release" -SelfContained @killArg
     }
+    & dotnet aid-publish -Project $csproj -Target $Target -Runtime "win-x64" -Configuration "Release" -SelfContained -KillRunning:$KillRunning
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     $configSrc = Join-Path $here "config\agent-notes-mcp.toml"
