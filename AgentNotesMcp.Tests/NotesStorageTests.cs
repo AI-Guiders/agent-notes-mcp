@@ -265,6 +265,32 @@ public sealed class NotesStorageTests
     }
 
     [Fact]
+    public void Write_EmitsNoBom_KnowledgeAndHotSection()
+    {
+        using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
+        using var runtime = AgentNotesTestToml.InstallForRoot(root.Path);
+        var storage = new NotesStorage();
+
+        Assert.Equal("OK", storage.WriteKnowledgeFile(root.Path, "bom-check.md", "# Заголовок\n\nтело\n"));
+        AssertNoBom(Path.Combine(root.Path, "knowledge", "bom-check.md"));
+
+        Assert.Equal("OK", storage.UpsertKnowledgeSection(root.Path, "bom-check-2.md", "bom-check-v1", "## Секция\n\nтело\n"));
+        AssertNoBom(Path.Combine(root.Path, "knowledge", "bom-check-2.md"));
+
+        storage.UpsertSection(root.Path, "bom-check-hot-v1", "## Hot\n\nтело\n");
+        AssertNoBom(storage.GetNotesPath(root.Path));
+    }
+
+    /// <summary>BOM на первой строке делает её невидимой для анкорных правил — запись обязана быть без него.</summary>
+    private static void AssertNoBom(string path)
+    {
+        var bytes = File.ReadAllBytes(path);
+        Assert.False(
+            bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF,
+            $"файл начинается с BOM (EF BB BF): {path}");
+    }
+
+    [Fact]
     public void Knowledge_Read_WhenFileMissing_ReturnsEmpty()
     {
         using var root = LocalSettingsLoaderTests.TempKnowledgeRoot.Create();
