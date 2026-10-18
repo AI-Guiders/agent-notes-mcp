@@ -16,7 +16,7 @@ personal = "D:/Experiments/agent-notes"
 # Smoke: knowledge/work/local/multi-root-group-smoke-v1.md
 [[knowledge.read_only]]
 id = "group"
-path = "D:/Experiments/PersonalCursorFolder/Financial/software/open/group-kb"
+path = "D:/Experiments/PersonalCursorFolder/open/group-kb"
 # Clone test (same commit as group-kb): uncomment and restart MCP
 # path = "D:/Experiments/PersonalCursorFolder/Financial/software/open/group-kb-clone"
 
